@@ -7,3 +7,22 @@
 /magpie-dev-backend
 /magpie-dev.new
 /internal/update/launcher-*.com
+# --- this fork's additions ---
+
+# Credentials and session material, never in git. A tunnel key or a workspace
+# cookie committed once stays in the history even after it is deleted, and the
+# upstream repo has no such files, so nothing here shadows a tracked path.
+devbridge*.key
+*.devbridge-key
+cookie*.txt
+cookie*.json
+*hlp_token*
+.env
+.env.*
+secrets/
+/tmp/
+
+# Local build and demo artefacts
+/magpie-cli-*
+dist2/
+*.tgz

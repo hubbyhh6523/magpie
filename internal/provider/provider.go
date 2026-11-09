@@ -2349,6 +2349,12 @@ func (p Provider) Ready() bool {
 		// signed with a Google token, at the address its project makes
 		return p.vertexBase() != ""
 	}
+	// A CodeArts MaaS provider signs with its account's AccessKey ID and
+	// Secret instead of carrying one key header (codearts_sign.go), so it
+	// is ready when it has both -- neither of which is p.Key.
+	if TakesCodeArtsAccessKey(p) {
+		return p.AccessKeyID != "" && p.SecretAccessKey != ""
+	}
 	return p.Account != nil || p.Key != "" || keyOptional(p)
 }
 

@@ -1,0 +1,134 @@
+name: Release (self-hosted fork)
+
+# This fork's own release path.
+#
+# The upstream .github/workflows/release.yml dispatches to yetone/magpie-releases
+# and downloads the signed, notarised build back from there. That repo and its
+# signing secrets are the author's, so a fork cannot run it: repository-dispatch
+# needs write on a repo we don't own, and notarisation needs secrets we don't
+# have. This workflow builds the terminal binary here and publishes it as this
+# repo's own release instead.
+#
+# Pushing a v* tag publishes. Running it by hand with a version builds the same
+# thing against the tag you name, so a dry run is possible.
+#
+# Signing note: these builds are NOT signed or notarised. macOS Gatekeeper will
+# warn on first launch and Windows SmartScreen will too. They are built from
+# this repo's source with the standard flags (CGO_ENABLED=0, -tags nogui).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (no v prefix; the v tag must already exist)'
+        required: true
+        type: string
+
+permissions:
+  contents: write   # create the release and upload its assets
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: linux,   goarch: amd64 }
+          - { goos: linux,   goarch: arm64 }
+          - { goos: darwin,  goarch: arm64 }
+          - { goos: darwin,  goarch: amd64 }
+          - { goos: windows, goarch: amd64, ext: '.exe' }
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # git describe needs the tags
+
+      - uses: actions/setup-go@v5
+        with:
+          # go.mod declares go 1.26.8; setup-go reads it, but a toolchain that
+          # exact had to be fetched by hand before, so name it here too.
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          EXT: ${{ matrix.ext }}
+        run: |
+          set -euo pipefail
+          VERSION="$(git describe --tags --always --dirty 2>/dev/null | tr -cd 'A-Za-z0-9._+-')"
+          [ -n "$VERSION" ] || VERSION=dev
+          echo "version=$VERSION" >> "$GITHUB_ENV"
+
+          # fonts links a C library through cgo, which a cross-compile can't
+          # satisfy; the nogui tag is the terminal-only build and CGO_ENABLED=0
+          # matches what `make cli` does on a plain machine.
+          CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" \
+            go build -tags nogui -trimpath \
+              -ldflags="-s -w -X main.version=$VERSION" \
+              -o "magpie-${GOOS}-${GOARCH}${EXT}" .
+
+      - name: Smoke test (native only)
+        if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
+        run: ./magpie-linux-amd64 --help | head -5
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: magpie-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: magpie-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: tag
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if [ "${GITHUB_REF}" = "${GITHUB_REF#refs/tags/}" ]; then
+            [ -n "${INPUT_VERSION:-}" ] || { echo 'no version and not a tag push' >&2; exit 1; }
+            TAG="v${INPUT_VERSION}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          git rev-parse "refs/tags/$TAG" >/dev/null 2>&1 || { echo "tag $TAG does not exist" >&2; exit 1; }
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum * > checksums.txt
+          cat checksums.txt
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* \
+              --verify-tag \
+              --title "magpie $TAG" \
+              --notes "Terminal build of $TAG from this fork. Unsigned: macOS Gatekeeper and Windows SmartScreen will warn. Built with CGO_ENABLED=0 -tags nogui." \
+              --latest
+          fi

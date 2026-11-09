@@ -225,6 +225,13 @@ func (p Provider) Sign(ctx context.Context, req *http.Request, proto Protocol, b
 	if p.Account != nil && p.Account.sign != nil {
 		return p.Account.sign(ctx, req, body)
 	}
+	// A CodeArts MaaS gateway authenticates with the account's AccessKey ID
+	// and Secret, signed into the request itself (codearts_sign.go): no key
+	// header, and the session headers ride along beside the signature.
+	if TakesCodeArtsAccessKey(p) {
+		codeartsSign(req, p.AccessKeyID, p.SecretAccessKey, body, time.Now())
+		return nil
+	}
 	// OpenCode's gateway routes nothing that names no session; the user's
 	// own header, below, still has the last word
 	OpenCodeSession(req.Header, req.URL.String())
