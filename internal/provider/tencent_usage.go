@@ -69,6 +69,8 @@ func AccessKeyVendor(p Provider) string {
 		return "volcengine"
 	case TakesTencentAccessKey(p):
 		return "tencent"
+	case TakesCodeArtsAccessKey(p):
+		return "codearts"
 	}
 	return ""
 }

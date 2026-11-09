@@ -373,6 +373,23 @@ var presets = []PresetDef{
 			{ID: "api", Name: "Pay as you go", Chat: "https://api.modelarts-maas.com/openai/v1", Anthropic: "https://api.modelarts-maas.com/anthropic"},
 		},
 		Models: []string{"glm-5.3", "glm-5.1", "kimi-k2.6", "deepseek-v4.1-flash", "deepseek-v4-flash"}},
+	// CodeArts MaaS: Huawei's coding-agent gateway at snap-access, signed with
+	// the account's AccessKey ID and Secret rather than a key header (see
+	// codearts_sign.go). Its chat APIs sit under /api/v2 on the same host that
+	// answers /v1/sessions and /snap-manager, and the models below are the ones
+	// the account's own catalog reported enabled and normal -- a catalog read
+	// with the same credentials every time, so a model Huawei adds shows up in
+	// the editor without magpie shipping a release.
+	{ID: "codearts", Name: "Huawei Cloud CodeArts", Short: "CodeArts", Icon: "huaweicloud-color", Kind: KindVendor,
+		Chat: "https://snap-access.cn-north-4.myhuaweicloud.com/api/v2",
+		Note: "MaaS gateway · AK/SK signed",
+		Website: "https://support.huaweicloud.com/codearts/",
+		Models: []string{
+			"GLM-5.2", "glm-5.3", "glm-5.3-flash", "glm-5.2-sft-harmony",
+			"deepseek-v4.1-flash", "deepseek-v4.1-flash-1017",
+			"kimi-k3", "kimi-k3.1-pro",
+			"openpangu-2.0-flash", "openpangu-2.0-pro", "speed",
+		}},
 	// Volcengine Ark (火山方舟): a Coding Plan's quota is spent only at
 	// /api/coding/v3 (chat completions and Responses; its Codex page sets
 	// wire_api "responses") and /api/coding (messages), an Agent Plan's only
