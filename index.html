@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>box desktop</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#1a1a1a;overflow:hidden;
+    font-family:system-ui,-apple-system,sans-serif}
+  #screen{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}
+  #screen canvas{max-width:100%;max-height:100%;object-fit:contain;display:block;cursor:default}
+  #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(10,10,12,.94);color:#fff8f0;z-index:10;font-size:15px;text-align:center;
+    flex-direction:column;gap:14px;padding:24px}
+  #overlay.hidden{display:none}
+  .spinner{width:26px;height:26px;border:3px solid rgba(255,255,255,.2);
+    border-top-color:#ff8a3d;border-radius:50%;animation:spin .9s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #gate{display:none;flex-direction:column;gap:12px;align-items:center;max-width:420px;width:100%}
+  #gate.show{display:flex}
+  #gate h2{font-size:1rem;font-weight:600;margin:0}
+  #gate p{font-size:.8rem;color:#9aa0b4;margin:0;line-height:1.6}
+  #gate input{width:100%;box-sizing:border-box;padding:11px 14px;border-radius:9px;
+    border:1px solid #333a4d;background:#141722;color:#e6e9f2;font-size:.9rem;outline:none}
+  #gate input:focus{border-color:#ff8a3d}
+  #gate button{padding:10px 22px;border-radius:9px;border:0;background:#ff8a3d;color:#1a1208;
+    font-weight:700;font-size:.86rem;cursor:pointer}
+  #gaterr{color:#ef4444;font-size:.78rem;min-height:1em}
+  #bar{position:fixed;left:0;right:0;top:0;padding:4px 10px;font-size:12px;
+    background:rgba(0,0,0,.55);color:#cfcfcf;display:flex;gap:12px;align-items:center;
+    opacity:0;transition:opacity .25s;z-index:20;pointer-events:none}
+  #bar.show{opacity:1}
+  #bar b{color:#ff8a3d;font-weight:600}
+  #bar .sp{flex:1}
+  #bar button{pointer-events:auto;background:#333;color:#eee;border:1px solid #555;
+    border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="screen"></div>
+<div id="bar">
+  <span id="dot">●</span><b id="state">connecting</b>
+  <span id="fps"></span><span class="sp"></span><span id="res"></span>
+  <button id="fs">全屏</button>
+  <button id="kb">键盘</button>
+</div>
+<div id="overlay">
+  <div class="spinner" id="spin"></div>
+  <div id="msg">正在连接云桌面…</div>
+  <div id="gate">
+    <h2>需要访问令牌</h2>
+    <p>这台云桌面需要 token 才能接管。粘贴一次即可，之后会记住 30 天。</p>
+    <input id="tok" type="text" placeholder="粘贴 token" autocomplete="off" spellcheck="false">
+    <div id="gaterr"></div>
+    <button id="gobtn">连接</button>
+  </div>
+</div>
+
+<script type="module">
+const COOKIE = 'desk_token';
+const screenEl = document.getElementById('screen');
+const overlay  = document.getElementById('overlay');
+const msgEl    = document.getElementById('msg');
+const gateEl   = document.getElementById('gate');
+const tokEl    = document.getElementById('tok');
+const errEl    = document.getElementById('gaterr');
+const spinEl   = document.getElementById('spin');
+const barEl    = document.getElementById('bar');
+const stateEl  = document.getElementById('state');
+const resEl    = document.getElementById('res');
+const dotEl    = document.getElementById('dot');
+const fpsEl    = document.getElementById('fps');
+
+function readCookie(name) {
+  const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return m ? decodeURIComponent(m[1]) : '';
+}
+function writeCookie(name, val) {
+  const secure = location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = name + '=' + encodeURIComponent(val)
+    + '; Path=/; Max-Age=2592000; SameSite=Lax' + secure;
+}
+
+// token precedence: URL > cookie > none
+const fromUrl = new URLSearchParams(location.search).get('token') || '';
+let token = fromUrl || readCookie(COOKIE);
+if (fromUrl) {
+  writeCookie(COOKIE, fromUrl);
+  // strip it from the address bar so it does not linger in history or shares
+  history.replaceState(null, '', location.pathname);
+}
+
+let rfb = null, frames = 0, t0 = performance.now();
+
+function showGate(err) {
+  spinEl.style.display = 'none';
+  msgEl.textContent = '';
+  gateEl.classList.add('show');
+  errEl.textContent = err || '';
+  tokEl.focus();
+}
+
+function showBar() {
+  barEl.classList.add('show');
+  clearTimeout(showBar._t);
+  showBar._t = setTimeout(() => barEl.classList.remove('show'), 2500);
+}
+function setState(text, ok) {
+  stateEl.textContent = text;
+  dotEl.style.color = ok ? '#3ecf6a' : (text === 'connecting' ? '#ffb02e' : '#e5484d');
+}
+document.addEventListener('mousemove', showBar);
+document.addEventListener('touchstart', showBar, {passive: true});
+
+async function start(tok) {
+  let RFB, attachIME;
+  try {
+    RFB = (await import('./core/rfb.js')).default;
+    ({ attachIME } = await import('./imebridge.js'));
+  } catch (e) {
+    spinEl.style.display = 'none';
+    msgEl.textContent = '客户端加载失败：' + e.message;
+    setState('error', false);
+    return;
+  }
+
+  const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+  const wsUrl = proto + location.host + '/websockify?token=' + encodeURIComponent(tok);
+
+  try {
+    rfb = new RFB(screenEl, wsUrl, { wsProtocols: ['binary'], shared: true });
+    rfb.scaleViewport = true;
+    rfb.resizeSession = false;
+    rfb.clipViewport = true;
+    rfb.showDotCursor = false;
+    rfb.focusOnClick = false;   // the IME bridge owns focus; letting noVNC
+                                // re-focus the canvas would close the keyboard
+
+    rfb.addEventListener('connect', () => {
+      overlay.classList.add('hidden');
+      gateEl.classList.remove('show');
+      setState('connected', true);
+      showBar();
+      // Android's IME only attaches to editable elements, so noVNC's canvas can
+      // never raise the keyboard on its own. The bridge keeps a hidden textarea
+      // focused and forwards its input as RFB key events.
+      try {
+        rfb._ime = attachIME(rfb, screenEl);
+      } catch (e) {
+        console.warn('IME bridge failed', e);
+      }
+    });
+
+    rfb.addEventListener('disconnect', (e) => {
+      const clean = e.detail && e.detail.clean;
+      setState(clean ? 'disconnected' : 'connection lost', false);
+      spinEl.style.display = 'none';
+      msgEl.textContent = clean
+        ? '会话已断开。刷新页面重新连接。'
+        : '连接中断：' + ((e.detail && e.detail.reason) || '未知原因');
+      overlay.classList.remove('hidden');
+    });
+
+    rfb.addEventListener('credentialsrequired', () => rfb.sendCredentials({password: ''}));
+    rfb.addEventListener('desktopname', (e) => { document.title = 'box · ' + e.detail.name; });
+
+    rfb.addEventListener('securityfailure', (e) => {
+      setState('auth failed', false);
+      showGate('令牌被服务器拒绝，请重新粘贴');
+    });
+
+  } catch (err) {
+    spinEl.style.display = 'none';
+    msgEl.textContent = '初始化失败：' + err.message;
+    setState('error', false);
+  }
+}
+
+if (!token) showGate('');
+else start(token);
+
+document.getElementById('gobtn').addEventListener('click', () => {
+  const v = tokEl.value.trim();
+  if (!v) { errEl.textContent = '令牌不能为空'; return; }
+  writeCookie(COOKIE, v);
+  location.reload();
+});
+tokEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('gobtn').click();
+});
+
+setInterval(() => {
+  if (!rfb) return;
+  const w = rfb._fbWidth, h = rfb._fbHeight;
+  if (w && h) resEl.textContent = w + '×' + h;
+  const now = performance.now();
+  const f = frames / ((now - t0) / 1000);
+  if (f > 0) fpsEl.textContent = f.toFixed(0) + ' fps';
+}, 1000);
+
+document.getElementById('kb').addEventListener('click', (ev) => {
+  ev.stopPropagation();
+  if (rfb && rfb._ime) rfb._ime.focus();
+  else if (rfb) {
+    // Not connected yet — the bridge only exists after 'connect'.
+    setState('connecting', false);
+  }
+  showBar();
+});
+
+document.getElementById('fs').addEventListener('click', (ev) => {
+  ev.stopPropagation();
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+  else document.exitFullscreen?.();
+});
+</script>
+</body>
+</html>
