@@ -23,7 +23,7 @@ RUN CGO_ENABLED=0 go build -tags nogui -trimpath \
 FROM debian:12-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && apt-get install -y --no-install-recommends ca-certificates curl python3 python3-pip \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd -g 65532 nonroot \
     && useradd -u 65532 -g nonroot -d /config/home -s /bin/bash nonroot
@@ -31,6 +31,9 @@ RUN apt-get update \
 COPY --from=build /out/magpie /magpie
 # magpie on PATH, so `magpie accounts add …` works in that terminal
 RUN ln -s /magpie /usr/local/bin/magpie
+COPY --from=build /src/acp-bridge /opt/acp-bridge
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 USER nonroot
 COPY --from=build --chown=65532:65532 /config /config
 
@@ -54,4 +57,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 EXPOSE 3425 3430
 
 ENTRYPOINT ["/magpie"]
-CMD ["serve"]
+CMD ["/start.sh"]
