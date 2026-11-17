@@ -15,22 +15,22 @@ import (
 )
 
 const (
-	testCodeartsAK = "HPUAXQFIYV0ABBL66N1Z"
-	testCodeartsSK = "1BFPBV2JpDFfiq0FGWjykhSSPBdp4inny56L4pAv"
+	testCodeartsAK = "TESTAK1234567890ABCDEF"
+	testCodeartsSK = "TESTSKfake000000000000000000000000000000000"
 
 	// GET /snap-manager/v1/statistics/plugin, signed headers
 	// content-type;host;x-sdk-date, no body. Verified: HTTP 200, 11 models.
-	wantCatalogAuth = "SDK-HMAC-SHA256 Access=HPUAXQFIYV0ABBL66N1Z, " +
+	wantCatalogAuth = "SDK-HMAC-SHA256 Access=TESTAK1234567890ABCDEF, " +
 		"SignedHeaders=content-type;host;x-sdk-date, " +
-		"Signature=061c66059fa402e45e2d329778f7def0a0a73426ba2e5229bcc99660bbc3ee62"
+		"Signature=35d3452fd2ee86872d1c993291d6df6df8fc1795fc944e7c478f615cb7cf1f3f"
 
 	// POST /api/v2/chat/completions with the body below. Verified: HTTP 200
 	// with a real completion.
 	wantChatBody        = `{"model":"glm-5.3","messages":[{"role":"user","content":"hi"}],"stream":false}`
 	wantChatPayloadHash = "4ab483fa960fa2a8f9977e9650eb66895f2bf90813bc5d5e173d7c19350bea6b"
-	wantChatAuth        = "SDK-HMAC-SHA256 Access=HPUAXQFIYV0ABBL66N1Z, " +
+	wantChatAuth        = "SDK-HMAC-SHA256 Access=TESTAK1234567890ABCDEF, " +
 		"SignedHeaders=content-type;host;x-sdk-content-sha256;x-sdk-date, " +
-		"Signature=91d872df73e4ccd468c9977c5b5119abd3fe212c40208036072b82ff26c84bbf"
+		"Signature=e2876cb32bd9626e59a5f13625067bc9626271daba3554bf35117dfcf7eca27a"
 )
 
 // TestCodeArtsSignCatalogVector signs a bodyless GET and demands byte equality
