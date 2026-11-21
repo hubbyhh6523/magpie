@@ -188,12 +188,8 @@ var cliForRoute = map[string]string{
 	"POST /api/settings/search-key":        "magpie search",
 	"POST /api/settings/search-count":      "magpie search count",
 	"POST /api/sync":                       "magpie sync",
-	"GET /api/davsync":                     "magpie webdav",
-	"POST /api/backup/export":              "magpie backup",
-	"POST /api/backup/import":              "magpie restore",
 	"GET /api/datafolder":                  "magpie data",
 	"POST /api/datafolder/{action}":        "magpie data move",
-	"POST /api/davsync/{action}":           "magpie webdav",
 	"GET /api/caller-keys":                 "magpie gateway-key list",
 	"POST /api/caller-keys/{action}":       "magpie gateway-key",
 	"GET /api/caller-keys/account-windows": "magpie quota", // the windows `gateway-key limit <id> account` takes
@@ -341,8 +337,6 @@ var notYet = map[string]string{
 	"POST /api/warm-all":                         A,  // api.go: All accounts warms every account in use (5bd41301b)
 	"POST /api/warm-now":                         A,  // api.go
 	"POST /api/window/{action}":                  W,  // api.go
-	"GET /api/autobackup":                        S2, // backup.go: Back up by itself
-	"POST /api/autobackup/{action}":              S2, // backup.go
 	"GET /api/archive":                           S2, // archive.go
 	"GET /api/archive/file":                      S2, // archive.go
 	"POST /api/archive/export":                   S2, // archive.go

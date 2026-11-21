@@ -4499,7 +4499,7 @@ input.words.window-in { width: 96px; font-variant-numeric: tabular-nums; }
    sends, who the allow list lets in), a line with a button or link in
    it. A touch screen, with no hover, keeps them all. */
 @media (hover: hover) {
-  :is(#view-settings:not(.set-searching), .editor.roomy .prov-prefs) .row.pref > .who > .sub:not(.err, .bad, .say, .proxy-check, .lib-way, .image-gen-hidden, .sync-sign-in, .no-names, .pv-hits, .feat-why, .vision-not-marked, .video-gen-how, .font-note, .acts, [role="status"], #proxySub, :has(> .warn)):not(#otelSessionsRow *, #allowList *, .disabled-model *) {
+  :is(#view-settings:not(.set-searching), .editor.roomy .prov-prefs) .row.pref > .who > .sub:not(.err, .bad, .say, .proxy-check, .lib-way, .image-gen-hidden, .no-names, .pv-hits, .feat-why, .vision-not-marked, .video-gen-how, .font-note, .acts, [role="status"], #proxySub, :has(> .warn)):not(#otelSessionsRow *, #allowList *, .disabled-model *) {
     --hint: 1; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
   }
   /* the line held out of sight stays in its row's box: placed against the
@@ -5043,31 +5043,10 @@ body.panel .modal { padding: 16px 12px; }
 .editor.importapps .apptag { flex: none; font-size: 11px; color: var(--fg-2); background: var(--pill); border-radius: 5px; padding: 1px 6px; margin-top: 1px; }
 .editor.importapps .bar .note { font-size: 12px; color: var(--muted); }
 
-/* sync and backup, on the Settings page */
 .prefs .sub.bad { color: var(--red); }
-.prefs .sync-note .who .sub + .sub { margin-top: 2px; }
-.editor.sync-form { grid-template-columns: 86px minmax(0, 1fr); }
 .editor label.tick { display: flex; align-items: center; gap: 7px; text-align: left; padding-top: 0; color: var(--fg-2); cursor: pointer; }
 .editor label.tick input { margin: 0; }
 .editor .fname { flex: 1; min-width: 0; font-size: 12.5px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.editor.sync-form .done { grid-column: 1 / -1; font-size: 12.5px; color: var(--fg-2); user-select: text; -webkit-user-select: text; }
-/* Preview beside Save (#6428): a narrow window puts the buttons on a second line, at the end */
-.editor.sync-form .bar { grid-column: 1 / -1; flex-wrap: wrap; justify-content: flex-end; row-gap: 6px; }
-/* Back up by itself (autobackup.js): a control too wide for the row goes
-   under its name, at the right, as Agents' rows do */
-.prefs .row.pref.auto-backup { flex-wrap: wrap; row-gap: 8px; }
-.prefs .row.pref.auto-backup .who { flex: 1 1 200px; }
-.prefs .row.pref.auto-backup .sub { white-space: normal; }
-.prefs .row.pref.auto-backup .val { margin-left: auto; max-width: 100%; }
-/* Versions folds the list of versions away (chen2652): its name and the
-   line under it open it, a chevron after the name turned down while open */
-.prefs .row.pref.auto-backup .who.auto-backup-folds { cursor: pointer; }
-.auto-backup-fold { display: inline-flex; align-items: center; gap: 4px; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
-.auto-backup-fold .chev { display: inline-flex; color: var(--faint); transition: transform .15s ease-out, color .12s; }
-.auto-backup-folds:hover .auto-backup-fold .chev { color: var(--muted); }
-.auto-backup-fold[aria-expanded="true"] .chev { transform: rotate(90deg); }
-.auto-backup-fold:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-@media (prefers-reduced-motion: reduce) { .auto-backup-fold .chev { transition: none; } }
 
 /* the usual context windows under the field, one click each (#120) */
 .cxpicks { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
@@ -5716,20 +5695,6 @@ body .row.agent .ag-prefs .row.pref .who { display: block; }
 body.linux .modal, body.linux .pop, body.linux.panel .profiles.open,
 body.linux:not(.side-nav) #view-settings .set-head::before,
 body.linux .action-confirm::backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
-/* what syncs (#6428): the keys' tick under Providers; a preview's items */
-.editor.sync-form .sync-sub-tick { padding-left: 22px; }
-.editor.sync-form .sync-except { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; }
-.editor.sync-form .sync-except[hidden] { display: none; }
-.sync-except .proto.pick { flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 3px; height: 24px; padding: 0 6px 0 9px; font: inherit; font-size: 12px; color: var(--fg-2); border: 0; border-radius: 7px; background: var(--pill); cursor: default; transition: background .12s, color .12s; }
-.sync-except .proto.pick span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sync-except .proto.pick svg { flex: none; opacity: .7; transition: transform .15s var(--ease); }
-.sync-except .proto.pick.open svg { transform: rotate(180deg); }
-.sync-except .proto.pick:hover, .sync-except .proto.pick.open { color: var(--fg); background: var(--pill-hover); }
-.sync-except .proto.pick.busy { opacity: .6; }
-.sync-preview .sync-items { display: grid; gap: 2px; margin: -2px 0 8px; padding: 6px 10px; border-radius: 8px; background: var(--pill); font-size: 12.5px; max-height: 180px; overflow-y: auto; }
-.sync-preview .sync-item { display: flex; justify-content: space-between; gap: 12px; min-width: 0; }
-.sync-preview .sync-item span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sync-preview .sync-item .sub, .sync-preview .sync-items > .sub, .sync-preview .lib-confirm.sub { color: var(--muted); }
 
 /* Speed beside Model and Effort (Tengs999 on X): the bolt and what decides it */
 .field.ag-speed .v { display: inline-flex; align-items: center; gap: 3px; }

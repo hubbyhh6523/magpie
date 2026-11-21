@@ -8,13 +8,13 @@ import (
 	"time"
 )
 
-// The terminal closing (SIGHUP) is left to magpie by bubbletea and by Wails
-// (ownSignals keeps it), so magpie tui and the app drain the gateway they
-// serve, its idle Claude sessions saved, before magpie dies of it: they
+// The terminal closing (SIGHUP) is left to magpie by Wails
+// (ownSignals keeps it), so magpie's app drains the gateway it
+// serves, its idle Claude sessions saved, before magpie dies of it: it
 // died first, and the next magpie had no session to resume (#7017).
 func TestHangupDrainsTheGatewayFirst(t *testing.T) {
-	oldRun, oldTUI, oldGUI, oldApp, oldPanel := tuiRun, tuiStop, guiStop, openApp, openPanel
-	t.Cleanup(func() { tuiRun, tuiStop, guiStop, openApp, openPanel = oldRun, oldTUI, oldGUI, oldApp, oldPanel })
+	oldGUI, oldApp, oldPanel := guiStop, openApp, openPanel
+	t.Cleanup(func() { guiStop, openApp, openPanel = oldGUI, oldApp, oldPanel })
 	logs := startLog
 	startLog = func(string) {}
 	t.Cleanup(func() { startLog = logs })
@@ -22,10 +22,6 @@ func TestHangupDrainsTheGatewayFirst(t *testing.T) {
 	// run is the command as it runs, once it has taken SIGINT and SIGTERM
 	// back
 	for name, open := range map[string]func(run func() error) error{
-		"tui": func(run func() error) error {
-			tuiRun = func(ready func()) error { ready(); return run() }
-			return runTUI()
-		},
 		"app": func(run func() error) error {
 			openApp = func(bool, string) error { ownSignals(); return run() }
 			return runGUI(false, "")
@@ -46,7 +42,7 @@ func TestHangupDrainsTheGatewayFirst(t *testing.T) {
 				}
 				close(stopped)
 			}
-			tuiStop, guiStop = stop, stop
+			guiStop = stop
 			endProbesOnSignal()
 			err := open(func() error {
 				send(t, syscall.SIGHUP)

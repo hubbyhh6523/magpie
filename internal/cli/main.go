@@ -16,14 +16,12 @@ import (
 
 	"github.com/yetone/magpie/internal/agent"
 	"github.com/yetone/magpie/internal/appdir"
-	"github.com/yetone/magpie/internal/backup"
 	"github.com/yetone/magpie/internal/browsermcp"
 	"github.com/yetone/magpie/internal/catalog"
 	"github.com/yetone/magpie/internal/claudebridge"
 	"github.com/yetone/magpie/internal/claudecode"
 	"github.com/yetone/magpie/internal/claudetui"
 	"github.com/yetone/magpie/internal/codexrelay"
-	"github.com/yetone/magpie/internal/davsync"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/library"
 	"github.com/yetone/magpie/internal/netproxy"
@@ -37,7 +35,6 @@ import (
 	"github.com/yetone/magpie/internal/settings"
 	"github.com/yetone/magpie/internal/shortcut"
 	"github.com/yetone/magpie/internal/sysutil"
-	"github.com/yetone/magpie/internal/tui"
 )
 
 // version is the root main package's, set at build time
@@ -50,7 +47,6 @@ const usage = `magpie — one place to pick every agent's model
   magpie tray                     start in the menu bar only
   magpie panel                    open the menu bar icon's quick panel, or close it
   magpie autostart [on|off]       open magpie (in the menu bar) when you log in, or say whether it does
-  magpie tui                      the same thing, in the terminal (serves the gateway while open when no magpie does)
   magpie web [--addr host:port] [--lan] [--no-open] [--gateway] [--tls-cert <file> --tls-key <file>]
                                   the app's window in a browser, with the gateway (no desktop needed: WSL, a server over SSH)
                                   a new key each run; MAGPIE_WEB_KEY (16+ letters, digits, - . _ ~) keeps one, signed in for 400 days
@@ -72,16 +68,9 @@ const usage = `magpie — one place to pick every agent's model
   magpie rename <old> <new>       rename a profile
   magpie rm <name>                delete a profile
 
-  magpie backup [--no-keys] [--no-library] [file]    providers, keys, settings, profiles, agent models, the library and the usage history in one file, sealed with a passphrase
-  magpie restore [--no-agents] [--no-library] <file> put a backup in on this machine; its usage history is merged with the one here
-                                                     --no-usage on either: the usage history left out
-                                                     --sign-ins on backup: the subscriptions' and plugins' sign-ins too, sealed (off unless given); --no-sign-ins on restore leaves them out
   magpie uninstall [--yes]                           disconnect every agent, putting back what each had, then remove magpie's service and files
                                                      --keep-data: all but deleting magpie's settings, providers and usage
   magpie data [move <folder>|move --home]            where magpie keeps its files and cache, and moving them to another disk (a link is left where they were)
-  magpie webdav [on <address>|set k=v…|now|off]      the same, kept the same on every computer through a WebDAV folder (magpie webdav help)
-  magpie s3 [on s3://<bucket>[/<prefix>]|set k=v…|now|off]   the same through an S3-compatible bucket: AWS, R2, B2, MinIO… (magpie s3 help)
-  magpie github [on github://<owner>/<repo>[/<folder>]|set k=v…|now|off]   the same in an encrypted GitHub repository (magpie github help)
 
   magpie library [sync|instructions|mcp|skill]   the instructions, MCP servers and skills written into every agent (magpie library help)
 
@@ -271,20 +260,6 @@ func exit(code int) {
 	endProcess(code)
 }
 
-// runTUI runs the TUI, which quits on Ctrl+C and SIGTERM itself once it
-// has started; it asks CLIs first, and a signal then ends those.
-func runTUI() error {
-	// the terminal closing (SIGHUP) drains the gateway it serves first
-	defer stopGatewayOnSignal(tuiStop)()
-	return tuiRun(ownSignals)
-}
-
-// tuiRun is tui.Run; a var so tests can stand in for it.
-var tuiRun = tui.Run
-
-// tuiStop is tui.StopGateway; a var so tests can stand in for it.
-var tuiStop = tui.StopGateway
-
 // syncAgentsOnChange sets what a catalog change (a provider or group
 // saved, a vendor's list fetched anew) does: the model lists agents keep
 // in files of their own are brought up to date behind the save, which
@@ -325,7 +300,7 @@ var startUp = func() {
 
 // servesPages is whether magpie run with args serves plugins' pages,
 // and so runs the services they talk to (plugin.ServePages): the app,
-// tray, web, serve and the TUI do; a command that does its work and
+// tray, web and serve do; a command that does its work and
 // ends doesn't.
 func servesPages(args []string) bool {
 	if len(args) == 0 {
@@ -335,7 +310,7 @@ func servesPages(args []string) bool {
 		return hasGUI
 	}
 	switch args[0] {
-	case "tui", "web", "serve", "tray", "app", "gui", "panel", "-Embedding":
+	case "web", "serve", "tray", "app", "gui", "panel", "-Embedding":
 		return true
 	}
 	return false
@@ -525,10 +500,6 @@ func run(args []string) error {
 	// written again when the backend's list changes
 	agent.CodexDesktopList = gateway.CodexDesktopCatalog
 	gateway.CodexDesktopChanged = agent.SyncCatalogSoon
-	// the setup kept the same on every computer, by whichever serves
-	gateway.WhileServing = append(gateway.WhileServing, davsync.Run)
-	// and the setup backed up into a folder here by itself (jwaitq)
-	gateway.WhileServing = append(gateway.WhileServing, backup.RunAuto)
 	// and dsh's patch lists, which dsh reads live: a route left behind by
 	// something else writing the file fails every session there until
 	// magpie writes its own list again
@@ -552,22 +523,11 @@ func run(args []string) error {
 	// and the library's skills from GitHub and git repositories, fetched
 	// again by themselves when that is switched on (0xYaCo on X)
 	gateway.WhileServing = append(gateway.WhileServing, library.KeepSkillsCurrent)
-	// and the request archive, when it is on, goes to the bucket sync is to
-	gateway.ArchiveBucket = func() (gateway.Putter, bool) {
-		if b, ok := davsync.S3Bucket(); ok {
-			return b, true
-		}
-		return nil, false
-	}
 	// and kept there under its size, a bucket grown before that brought
 	// under it once the gateway starts
 	gateway.WhileServing = append(gateway.WhileServing, gateway.KeepBucketArchiveBounded)
 	if len(args) == 0 {
-		if hasGUI {
-			return runGUI(true, "")
-		}
-		gateway.Serves = "tui"
-		return runTUI()
+		return runGUI(true, "")
 	}
 	// a magpie:// link the system handed over (Windows, Linux): the app
 	// opens it for the user to confirm
@@ -580,14 +540,12 @@ func run(args []string) error {
 	// how this process was started, for the Routing page of another magpie on
 	// this computer to name the one that serves the gateway (#2606)
 	switch args[0] {
-	case "tui", "web", "serve", "tray":
+	case "web", "serve", "tray":
 		gateway.Serves = args[0]
 	case "app", "gui", "panel", "-Embedding":
 		gateway.Serves = "app"
 	}
 	switch args[0] {
-	case "tui":
-		return runTUI()
 	case "web":
 		return webCmd(args[1:])
 	case "app", "gui":
@@ -664,10 +622,6 @@ func run(args []string) error {
 		return statusCmd(args[1:])
 	case "library", "lib":
 		return libraryCmd(args)
-	case "backup":
-		return backupCmd(args[1:])
-	case "restore":
-		return restoreCmd(args[1:])
 	case "uninstall":
 		// Windows' Installed apps: the app's window asks (shortcut.UninstallArgs)
 		if hasGUI && slices.Equal(args, shortcut.UninstallArgs) {
@@ -675,14 +629,8 @@ func run(args []string) error {
 			return runUninstallWindow()
 		}
 		return uninstallCmd(args[1:])
-	case "webdav", "dav":
-		return webdavCmd(args[1:])
 	case "plugin", "plugins":
 		return pluginCmd(args)
-	case "s3":
-		return s3Cmd(args[1:])
-	case "github":
-		return githubCmd(args[1:])
 	case "claude-code":
 		return claudeCodeCmd(args[1:])
 	case "settings":

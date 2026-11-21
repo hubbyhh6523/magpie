@@ -27,8 +27,7 @@ import (
 	"github.com/yetone/magpie/internal/settings"
 )
 
-// archiveKeeper is a bucket that can be listed and removed from: the S3
-// sync's (davsync.Bucket).
+// archiveKeeper is a bucket that can be listed and removed from.
 type archiveKeeper interface {
 	Each(ctx context.Context, prefix string, f func(name string, size int64)) error
 	Delete(ctx context.Context, name string) error

@@ -31,7 +31,6 @@ const CONCEPTS = [
   "sleep awake caffeinate 休眠 睡眠 待机 待機 スリープ ruhezustand | prevent sleep",
   "language locale 语言 中文 英文 語言 言語 sprache | language",
   "upgrade version 升级 版本 升級 バージョン aktualisier | app updates|about",
-  "backup export import restore 备份 导出 导入 恢复 備份 匯出 匯入 還原 バックアップ 復元 sicherung | sync and backup|backup",
   "redact desensitiz sensitive secret password pii 脱敏 隐私 敏感 密码 掩码 去敏 隱私 遮罩 密碼 マスク 秘密 パスワード maskier datenschutz | privacy|what to mask|masking",
   "lan remote phone mobile tailscale 局域网 远程 共享 手机 内网 區域網 遠端 共用 手機 リモート 共有 スマホ fernzugriff | sharing|local network|browser access|another magpie|network and sharing",
   "cost money price spend billing 费用 花费 价格 账单 金额 花了多少 費用 價格 帳單 料金 価格 kosten preis | currency|menu bar cost|price rate|totals in|low balance alert",

@@ -73,7 +73,6 @@ magpie save work && magpie use work             # profiles
 magpie quota                                    # what's left on every plan
 magpie settings set theme dark                  # every Settings switch, from the terminal
 magpie tool generate_image "a magpie, watercolour" -o hero.png   # magpie's image, vision and search tools, called directly
-magpie tui                                      # the whole thing, in a terminal
 ```
 
 magpie finds the subscriptions your agents are signed in to by reading their sign-ins (Claude Code's and Codex's files, the Keychain). To keep it from reading them, turn off Settings → Privacy → *Subscription accounts*, or run `magpie accounts discovery off` (`on` turns it back on). `MAGPIE_NO_ACCOUNTS=1` turns it off for one run without changing the saved setting. API-key providers work either way.

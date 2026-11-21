@@ -99,8 +99,7 @@ keys and accounts per request is in [Gateway routing and fallback](gateway-routi
 
 The `remote-magpie` preset is of its own kind, `KindRemote` (`remote`), not
 a relay: the app's Add sheet lists it under Another computer's magpie, after
-On this machine, and `magpie presets` and the TUI's add list name it so too
-(`kindNote` in [`tui/pages.go`](../../internal/tui/pages.go)).
+On this machine, and `magpie presets` names it so too.
 
 A `remote-magpie` provider derives Chat, Responses, Messages and System One
 bases from one address (`remoteMagpieEndpoints` in
@@ -267,11 +266,10 @@ back on quit (`quit.restored`) is left to RewireOnStart. Connecting it
 by hand records `on` again. `TestRemoteConnectsNewAgents`,
 `TestProviderSaveConnectAgents`.
 
-The CLI and TUI report model-list fetch errors for remote and other mixed providers
+The CLI reports model-list fetch errors for remote and other mixed providers
 (such as OpenRouter, serving conversation and decision models). Only a
 decision-only provider keeps the separate decision discovery behavior
-(`announce` in [`providers_cli.go`](../../internal/cli/providers_cli.go), `addKeyAsk` in
-[`pages.go`](../../internal/tui/pages.go)). A remote's endpoint test reuses
+(`announce` in [`providers_cli.go`](../../internal/cli/providers_cli.go)). A remote's endpoint test reuses
 successful model discovery for its decision result, and reports none when
 no decision model was discovered (`Test` in
 [`test.go`](../../internal/provider/test.go)).
@@ -611,7 +609,6 @@ go test -tags nogui ./internal/provider -run 'TestVolc|TestQianfan|TestBedrock|T
 go test -tags nogui ./internal/gui -run TestProviderSaveKeepsVolcengineSecret
 go test -tags nogui ./internal/provider -run 'TestTC3|TestTencent|TestAli'
 go test -tags nogui ./internal/gui -run TestProviderListTellsTencentAccessKey
-go test -tags nogui ./internal/backup ./internal/davsync -run 'TestRoundTrip|TestNoKeys|BalanceToken'
 node --test internal/gui/tests/volc-access-key.test.cjs internal/gui/tests/tencent-access-key.test.cjs
 go test -tags nogui ./internal/provider -run '^TestProviderProbesUseProtocolHeaders$'
 go test -tags nogui ./internal/provider -run '^Test(Partners|CountPartner|NoticePartners)'
@@ -624,7 +621,7 @@ node --test internal/gui/tests/account-discovery.test.cjs
 go test -tags nogui ./internal/provider ./internal/gateway ./internal/gui -run ExtraBody
 go test -tags nogui ./internal/provider ./internal/gateway -run 'TestHeadersTakeTheConversation|TestSentHeaders|TestExtraBodyThread|TestHeadersCarry|TestHeadersDerived|TestThreadIDIsCodexThread|TestHeaderSessionWithoutCRLF'
 node --test internal/gui/tests/header-session-hint.test.cjs
-go test -tags nogui ./internal/provider ./internal/davsync ./internal/gui -run 'KeepsAccessKey|ProvidersFileWithBOM|AccessKeySecret|PlanCardWithoutAccessKey|KeepsVolcengineSecret'
+go test -tags nogui ./internal/provider ./internal/gui -run 'KeepsAccessKey|ProvidersFileWithBOM|AccessKeySecret|PlanCardWithoutAccessKey|KeepsVolcengineSecret'
 node --test internal/gui/tests/extra-body.test.cjs
 go test -tags nogui ./internal/provider ./internal/gateway ./internal/gui -run ReplyHeaders
 node --test internal/gui/tests/reply-headers.test.cjs

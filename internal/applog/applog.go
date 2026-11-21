@@ -3,8 +3,7 @@
 // desktop launcher has no terminal: what it logged went nowhere, so a user
 // asked for magpie's log had none to send (rayem1w on X, a Codex "hit a
 // snag" through the gateway, 0.1.2330). Only the launch agent
-// (`magpie daemon install`, serve.log) and a `magpie tui` that left the
-// gateway running (serve.log in magpie's cache) kept one.
+// (`magpie daemon install`, serve.log) kept one.
 //
 // The file is app.log in appdir.Logs. It is the app's alone: the launch
 // agent's serve.log, in the same folder on a Mac, is written by launchd for

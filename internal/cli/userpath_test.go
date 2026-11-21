@@ -11,7 +11,7 @@ import (
 
 // TestGatewayStartsGetUserPath: every way magpie starts with a gateway
 // gives what it starts the node a version manager put on PATH only in the
-// shell's profile (#2685, #3803). magpie tui runs in a terminal, with its
+// shell's profile (#2685, #3803). magpie run from a terminal has its
 // PATH already. A start counts when it calls proc.UserPath, or calls a
 // function or func var of this package that does (runGUI's openApp, which
 // a test stands in for).

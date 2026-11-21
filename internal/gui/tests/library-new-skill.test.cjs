@@ -36,7 +36,6 @@ function server(lang, posts, state) {
     }
     if (url.pathname === "/api/library/skill") return route.fulfill({ json: { text: `---\nname: ${url.searchParams.get("name")}\n---\n`, path: `${HOME}/.magpie/library/skills/${url.searchParams.get("name")}/SKILL.md` } });
     if (url.pathname === "/api/library/rtk") return route.fulfill({ json: {} });
-    if (url.pathname === "/api/davsync") return route.fulfill({ json: { on: false } });
     if (url.pathname === "/api/usage/quotas") return route.fulfill({ json: [] });
     if (url.pathname === "/api/groups") return route.fulfill({ json: { groups: [] } });
     if (url.pathname === "/api/providers") return route.fulfill({ json: { providers: [], gateway: { running: true } } });

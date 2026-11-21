@@ -963,7 +963,7 @@ signed in; in English and Chinese.
 
 `settings-sections.test.cjs` checks the Settings page in parts (#471): a tab
 list at its top — General, Usage, Network and sharing, Models, Privacy,
-Observability, Sync and backup, About — each tab showing its part's rows
+Observability, About — each tab showing its part's rows
 alone, posting nothing and leaving the page and the tab where they were; a
 part's controls still posting what they did; one tab in the Tab order and
 the arrows, Home and End along them; the part kept in the address
@@ -986,8 +986,8 @@ nothing is posted, and a plain click is posted once, not twice. Drawn
 again once more after it is let go and before the click that sets off,
 as Browser access is when the answer to its state comes then (#3922),
 On is posted once. It then
-presses every option control on every Settings tab (49 in English, the
-warm-up, check-in, sync and local network ones included) the same way and
+presses every option control on every Settings tab (45 in English, the
+warm-up, check-in and local network ones included) the same way and
 checks that the control drawn in its place is clicked once on the same
 option. Without the fix no click comes at all. A tap through the redraw is
 posted once, not twice (Chromium only: Playwright can't hold a tap in
@@ -1746,53 +1746,6 @@ a system proxy on loopback that nothing listens on (@bitssly on X: a VPN
 app turned off left Windows' proxy at its port). The proxy line names the
 address found and says requests go direct until it runs again, in all five
 languages, at 1100px and 420px, Chromium and WebKit. The API is faked.
-
-`s3-sync.test.cjs` sets up sync to an S3 bucket from Settings (#296). It
-works as follows, in English and Chinese:
-
-- WebDAV is picked first. Picking S3 shows the fields for the endpoint,
-  bucket, prefix, region, access key, secret and path-style, each label
-  fitting its column. Switching between WebDAV and S3 leaves the page where
-  it was, and what was typed for WebDAV is still there after switching back.
-- With no bucket, the form says so and posts nothing.
-- Save posts `s3://bucket/prefix`, the access key as the user and the
-  secret as the password, together with the endpoint, region and path-style.
-  The row then reads "S3 sync" with the bucket and server.
-- Edit opens the form with S3 picked, marked "S3 · on", and the fields as
-  saved. The secret field is empty, with "saved" as its placeholder.
-
-`github-sync.test.cjs` checks that Settings offers GitHub beside WebDAV and
-S3 in English, Chinese, Traditional Chinese, Japanese and German at 900px and 440px. It verifies
-the owner/repo, optional folder and branch, separate GitHub token, passphrase
-and sync toggles are posted as expected, rejects an incomplete binding and
-reopens the saved setup with the token kept secret. The API is faked; the
-test never contacts GitHub.
-
-`sync-other-kind.test.cjs` checks that moving sync between WebDAV and S3
-keeps the other's settings (ARNO on Discord: trying S3 wiped the WebDAV
-address, user and password). With S3 synced to and a WebDAV server kept,
-the row ends "WebDAV settings kept", the form marks S3 "on" and says the
-WebDAV settings are kept; picking WebDAV, which leaves the page where it
-was, shows the kept address and user, the password as saved, says saving
-moves sync there and the button reads "Move sync to WebDAV". Saving posts
-that server with the password left empty for the one kept, and the row
-then reads "WebDAV sync", "S3 settings kept". English and Chinese,
-Chromium and WebKit, API faked. Before the fix the WebDAV fields were
-empty and nothing said which was on or kept.
-
-`webdav-settings-refresh.test.cjs` checks the Settings page's sync row
-against a setup changed behind the window (#305: magpie webdav / magpie s3
-at the terminal): the faked `/api/davsync` answers differently between
-reads, and the window's focus — or the page becoming visible again — must
-re-read it, the row, its status and the form's ticks following what the CLI
-left (a WebDAV setup with agents and the library out, then an S3 one) rather
-than what the page first read. A focus while a form is open never rebuilds
-it: what was typed stays (#104). Off, the description is built from the
-view's toggles and names only what is turned on — providers without their
-API keys, no agents' models — as the CLI's list does; a view that says
-nothing of the toggles reads as the whole lot. English and Chinese,
-Chromium and WebKit. Before the fix, the row kept the first view it had
-read and the description was the hardcoded whole list.
 
 `market-have.test.cjs` checks that the Library's Discover cards follow
 the library without the window being focused again (#300). Removing a

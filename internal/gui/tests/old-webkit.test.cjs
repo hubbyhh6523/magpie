@@ -152,11 +152,10 @@ test("compat.js is the first of the page's own scripts", async () => {
   // when a context window part is opened, resetask.js when a Codex reset's
   // Use is pressed, quotaall.js when a provider has two accounts, quotatable.js when the Usage page's table is picked,
   // quitask.js when a Quit asks first, proxies.js when Settings draws its saved proxies, checkinnow.js when Settings' Check
-  // in now for one account is pressed, autobackup.js when Settings draws
-  // Sync, scrollends.js on the window's first scroll, profilerename.js
+  // in now for one account is pressed, datafolder.js when Settings draws
+  // General, scrollends.js on the window's first scroll, profilerename.js
   // when a saved profile's Rename is pressed, keyspend.js when the
-  // provider editor draws a key's row, syncfiles.js when Sync's server form,
-  // Export or Import opens, agentcompact.js when an agent sheet holds Long
+  // provider editor draws a key's row, agentcompact.js when an agent sheet holds Long
   // conversations, balfound.js when the editor draws a relay's balance
   // with no Balance URL, passerrors.js when it draws a key provider's
   // Errors, tlscerts.js when it draws the certificate rows,
@@ -195,7 +194,7 @@ test("compat.js is the first of the page's own scripts", async () => {
   // were each left out of this list and turned it red on main (#6030)
   const lazy = new Set();
   for (const f of await scripts()) for (const m of (await read(f)).matchAll(/import\(\s*["']\.\/([\w.-]+\.js)["']\s*\)/g)) lazy.add(m[1]);
-  for (const f of await scripts()) if (!lazy.has(f) && !["webfonts.js", "cfgblocked.js", "signsheets.js", "ruleedit.js", "ratewindows.js", "traywindows.js", "autoresetown.js", "registry.js", "navlamp.js", "whatsnew.js", "claudemode.js", "ctxtext.js", "resetask.js", "quotaall.js", "quotatable.js", "quitask.js", "checkinnow.js", "proxies.js", "autobackup.js", "scrollends.js", "profilerename.js", "settingshints.js", "keyspend.js", "syncfiles.js", "agentcompact.js", "agentwindow.js", "balfound.js", "passerrors.js", "tlscerts.js", "keybalance.js", "modellimits.js", "notices.js", "videogen.js", "provlinks.js", "setfeats.js", "pageshare.js", "panelfirst.js", "panelarrange.js", "modelfind.js", "agentsmanager.js", "agentsuffix.js", "phonetabs.js", "pluginmd.js", "bark.js", "acctexport.js", "plugincounts.js", "navicons.js", "autoswitchtip.js", "codexprojects.js", "pipecheck.js", "relaycheck.js", "addfloat.js", "plugingrid.js", "plugininstalled.js", "rotfig.js", "ompadvisor.js", "kimisub.js", "agentspeed.js", "claudemagpie.js", "keyrates.js", "maximages.js", "qianwenplan.js", "qianfanplan.js", "agymove.js", "updatetrust.js", "currencyprefs.js", "appearance.js", "mirroredit.js", "navorder.js", "instancename.js"].includes(f)) assert(all.includes(f), f + " is not loaded by index.html, and no script imports it");
+  for (const f of await scripts()) if (!lazy.has(f) && !["webfonts.js", "cfgblocked.js", "signsheets.js", "ruleedit.js", "ratewindows.js", "traywindows.js", "autoresetown.js", "registry.js", "navlamp.js", "whatsnew.js", "claudemode.js", "ctxtext.js", "resetask.js", "quotaall.js", "quotatable.js", "quitask.js", "checkinnow.js", "proxies.js", "scrollends.js", "profilerename.js", "settingshints.js", "keyspend.js", "agentcompact.js", "agentwindow.js", "balfound.js", "passerrors.js", "tlscerts.js", "keybalance.js", "modellimits.js", "notices.js", "videogen.js", "provlinks.js", "setfeats.js", "pageshare.js", "panelfirst.js", "panelarrange.js", "modelfind.js", "agentsmanager.js", "agentsuffix.js", "phonetabs.js", "pluginmd.js", "bark.js", "acctexport.js", "plugincounts.js", "navicons.js", "autoswitchtip.js", "codexprojects.js", "pipecheck.js", "relaycheck.js", "addfloat.js", "plugingrid.js", "plugininstalled.js", "rotfig.js", "ompadvisor.js", "kimisub.js", "agentspeed.js", "claudemagpie.js", "keyrates.js", "maximages.js", "qianwenplan.js", "qianfanplan.js", "agymove.js", "updatetrust.js", "currencyprefs.js", "appearance.js", "mirroredit.js", "navorder.js", "instancename.js"].includes(f)) assert(all.includes(f), f + " is not loaded by index.html, and no script imports it");
 });
 
 test("the styles hold up in Safari 15.0", async () => {

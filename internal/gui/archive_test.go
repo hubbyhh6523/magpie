@@ -12,12 +12,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/yetone/magpie/internal/davsync"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/settings"
 )
 
-// fakeArchive is a bucket of archived calls in memory; size, when set,
+// fakeArchive is a store of archived calls in memory; size, when set,
 // is what it says an object's size is.
 type fakeArchive struct {
 	objs map[string][]byte
@@ -27,7 +26,7 @@ type fakeArchive struct {
 func (f fakeArchive) Open(_ context.Context, name string) (io.ReadCloser, int64, error) {
 	b, ok := f.objs[name]
 	if !ok {
-		return nil, 0, davsync.ErrNoObject
+		return nil, 0, gateway.ErrNotArchived
 	}
 	if f.size != 0 {
 		return io.NopCloser(bytes.NewReader(b)), f.size, nil

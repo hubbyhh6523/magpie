@@ -5,8 +5,7 @@
 // other one) that asks for computer=, the panel's Usage tab has one too, a
 // row made on another computer says so beside its agent, and its details
 // name the computer and say what was said stays there, nothing asked of this
-// computer's session files for it. The sync form's Usage tick posts usage:
-// true, and leaving it off posts nothing new. No click moves the page.
+// computer's session files for it. No click moves the page.
 // English and Chinese; the API is faked.
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
@@ -38,8 +37,7 @@ function ledger(q, shared) {
   };
 }
 
-function server(lang, shared, asked, contents, posts) {
-  let sync = { on: false, keys: true, agents: true, library: true };
+function server(lang, shared, asked, contents) {
   return async (route) => {
     const req = route.request(), url = new URL(req.url());
     const json = (data) => route.fulfill({ json: data });
@@ -58,13 +56,6 @@ function server(lang, shared, asked, contents, posts) {
     if (url.pathname === "/api/gateway/trace") return json({ mine: true, now: new Date().toISOString(), seq: 0, totals: { requests: 0, rerouted: 0, errors: 0 }, routes: [] });
     if (url.pathname === "/api/gateway/history") return json({ cut: false, days: [], routes: [] });
     if (url.pathname === "/api/window/fit" || url.pathname === "/api/window/main") return route.fulfill({ status: 204 });
-    if (url.pathname === "/api/davsync") return json(sync);
-    if (url.pathname === "/api/davsync/save") {
-      const b = req.postDataJSON();
-      posts.push(b);
-      sync = { on: true, kind: "webdav", url: b.url, passwordSet: true, passphraseSet: true, keys: b.keys, agents: b.agents, library: b.library, usage: !!b.usage };
-      return json(sync);
-    }
     if (url.pathname.startsWith("/api/")) return json({});
     const file = path.join(assets, url.pathname === "/" ? "index.html" : url.pathname);
     const contentType = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" }[path.extname(file)];
@@ -73,10 +64,8 @@ function server(lang, shared, asked, contents, posts) {
 }
 
 const L = {
-  en: { all: "All computers", here: "This computer", on: "Claude Code · on studio", key: "Computer", stays: "What was said stays on studio: sync shares the usage alone.",
-    tick: "Usage: this computer's calls, for the Usage page on the others" },
-  zh: { all: "全部电脑", here: "本机", on: "Claude Code · 在 studio", key: "电脑", stays: "对话内容留在 studio 上：同步只共享用量。",
-    tick: "用量：本机的请求，在其他电脑的用量页里显示" },
+  en: { all: "All computers", here: "This computer", on: "Claude Code · on studio", key: "Computer", stays: "What was said stays on studio: sync shares the usage alone." },
+  zh: { all: "全部电脑", here: "本机", on: "Claude Code · 在 studio", key: "电脑", stays: "对话内容留在 studio 上：同步只共享用量。" },
 };
 
 for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium", "webkit"])) {
@@ -85,7 +74,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
     t.after(() => browser.close());
     for (const lang of ["en", "zh"]) {
       const w = L[lang];
-      const open = async (url, viewport, shared, asked = [], contents = [], posts = []) => {
+      const open = async (url, viewport, shared, asked = [], contents = []) => {
         const ctx = await browser.newContext({ viewport, reducedMotion: "reduce" });
         t.after(() => ctx.close());
         const p = await ctx.newPage();
@@ -93,7 +82,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         p.setDefaultNavigationTimeout(60000);
         const errors = [];
         p.on("pageerror", (e) => errors.push(e.message));
-        await p.route("**/*", server(lang, shared, asked, contents, posts));
+        await p.route("**/*", server(lang, shared, asked, contents));
         await p.goto(url);
         return { p, errors };
       };
@@ -173,50 +162,6 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         assert.deepEqual(errors, []);
       });
 
-      await t.test(`${lang}: the sync form's Usage tick`, async () => {
-        const posts = [];
-        const { p, errors } = await open("http://magpie.test/", { width: 900, height: 420 }, false, [], [], posts);
-        await p.locator("#prefs").click();
-        await reader.openPart(p, "sync");
-        const first = p.locator("#syncList .row.pref").first();
-        await first.waitFor({ state: "visible" });
-        const toEnd = async () => {
-          await p.mouse.move(450, 300);
-          const left = () => p.locator("#view-settings").evaluate((v) => v.scrollHeight - v.clientHeight - v.scrollTop);
-          for (let i = 0; i < 120 && (await left()) > 0.5; i++) { await p.mouse.wheel(0, 80); await p.waitForTimeout(15); }
-          await p.waitForTimeout(300);
-        };
-        await toEnd();
-        await first.locator(".val button").click();
-        const form = p.locator("#syncList .sync-form");
-        await form.waitFor({ state: "visible" });
-        await form.locator(":scope > div").nth(1).locator("input").fill("https://dav.example.com/dav/");
-        const box = (label) => form.locator(":scope > label:visible", { hasText: new RegExp("^" + label + "$") }).locator("xpath=following-sibling::div[1]").locator("input");
-        await box(lang === "zh" ? "口令" : "Passphrase").fill("correct horse");
-        await toEnd();
-        // Usage is under the form's Advanced, folded while nothing in it is set
-        const adv = form.locator("details.sync-advanced");
-        assert.equal(await adv.evaluate((d) => d.open), false, "Advanced open with nothing in it set");
-        await adv.locator("summary").evaluate((e) => e.scrollIntoView({ block: "center" }));
-        await adv.locator("summary").click();
-        const tick = form.locator("label.tick", { hasText: w.tick });
-        // Back up by itself's rows under the form put the tick, at the
-        // page's end, under Settings' held tabs: bring it into the open
-        await tick.evaluate((e) => e.scrollIntoView({ block: "center" }));
-        assert.equal(await tick.locator("input").isChecked(), false, "off unless picked");
-        const top = () => p.locator("#view-settings").evaluate((v) => v.scrollTop);
-        // the fold just opened: measure once the page has stopped moving
-        let at = await top();
-        for (let i = 0; i < 50; i++) { await p.waitForTimeout(60); const now = await top(); if (now === at) break; at = now; }
-        await tick.click();
-        await p.waitForTimeout(200);
-        assert.equal(await top(), at, "the tick moved the page");
-        await form.locator(".bar .primary").click();
-        await form.waitFor({ state: "detached" });
-        assert.equal(posts.length, 1);
-        assert.equal(posts[0].usage, true);
-        assert.deepEqual(errors, []);
-      });
     }
   });
 }

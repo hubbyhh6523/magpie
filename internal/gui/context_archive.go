@@ -20,7 +20,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yetone/magpie/internal/davsync"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/provider"
 )
@@ -134,7 +133,7 @@ func readArchived(ctx context.Context, archive string) (archivedCopy, error) {
 var errArchiveCut = errors.New("the archive's copy can't be read whole")
 
 // openArchiveName opens the archive's file name, this computer's first;
-// errNotArchived when neither it nor the bucket has it.
+// errNotArchived when neither it nor the store has it.
 func openArchiveName(ctx context.Context, name string) (io.ReadCloser, int64, error) {
 	if body, size, err := localArchive().Open(ctx, name); !errors.Is(err, gateway.ErrNotArchived) {
 		return body, size, err
@@ -144,7 +143,7 @@ func openArchiveName(ctx context.Context, name string) (io.ReadCloser, int64, er
 		return nil, 0, errNotArchived
 	}
 	body, size, err := b.Open(ctx, name)
-	if errors.Is(err, davsync.ErrNoObject) {
+	if errors.Is(err, gateway.ErrNotArchived) {
 		return nil, 0, errNotArchived
 	}
 	return body, size, err

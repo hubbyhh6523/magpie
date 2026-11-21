@@ -28,7 +28,7 @@ func webView2Check(app *application.App) bool {
 	if !webView2Missing(app.Env.Info().PlatformInfo) {
 		return true
 	}
-	log.Printf("magpie: no Microsoft Edge WebView2 Runtime, which magpie's windows need; install it from %s, or use magpie web / magpie tui", webView2Page)
+	log.Printf("magpie: no Microsoft Edge WebView2 Runtime, which magpie's windows need; install it from %s, or use magpie web", webView2Page)
 	title, body := webView2Notice(trayLang(settings.Shared().Lang, systemLang))
 	if webView2Box(title, body) == idYes {
 		if err := windows.ShellExecute(0, windows.StringToUTF16Ptr("open"), windows.StringToUTF16Ptr(webView2Page), nil, nil, windows.SW_SHOWNORMAL); err != nil {

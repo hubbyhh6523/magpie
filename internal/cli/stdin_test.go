@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/yetone/magpie/internal/plugin"
@@ -17,6 +18,26 @@ func swapStdin(t *testing.T, text string) {
 		t.Fatal(err)
 	}
 	w.WriteString(text)
+	w.Close()
+	old := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = old
+		r.Close()
+	})
+}
+
+// piped is what stdin holds for the secrets asked, a line each: a pipe, so
+// they are read as a script's are, never from the terminal the test is in.
+func piped(t *testing.T, lines ...string) {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(lines) > 0 {
+		w.WriteString(strings.Join(lines, "\n") + "\n")
+	}
 	w.Close()
 	old := os.Stdin
 	os.Stdin = r

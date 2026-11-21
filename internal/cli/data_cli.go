@@ -129,7 +129,7 @@ func unreachableStop(args []string) {
 		return
 	}
 	fmt.Fprintln(os.Stderr, "magpie:", err)
-	if hasGUI && (len(args) == 0 || servesPages(args) && args[0] != "serve" && args[0] != "tui" && args[0] != "web") {
+	if hasGUI && (len(args) == 0 || servesPages(args) && args[0] != "serve" && args[0] != "web") {
 		alert("magpie", err.Error())
 	}
 	os.Exit(1)

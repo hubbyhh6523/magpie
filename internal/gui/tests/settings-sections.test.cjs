@@ -1,8 +1,8 @@
 // Run with Node's test runner and Playwright on the module path; see README.md.
 // The Settings page in parts (#471: one long scroll of nine sections and
 // some 45 rows, the rarely used ones screens away): a tab list at the top —
-// General, Allowances, Network and sharing, Models, Privacy, Observability, Sync
-// and backup, About — each tab showing its part's rows alone, so any section
+// General, Allowances, Network and sharing, Models, Privacy, Observability,
+// About — each tab showing its part's rows alone, so any section
 // is one click away once Settings is open. The part picked is kept in the
 // address (?view=settings&tab=…), so a reload lands on it, and remembered,
 // so the window opened again on Settings does too; a link with a tab opens
@@ -63,16 +63,16 @@ function server(lang, posts, { web = false, size = 100 } = {}) {
   };
 }
 
-const TABS = ["general", "usage", "network", "models", "privacy", "otel", "sync", "about"];
+const TABS = ["general", "usage", "network", "models", "privacy", "otel", "about"];
 const L = {
-  en: ["General", "Allowances", "Network and sharing", "Models", "Privacy", "Observability", "Sync and backup", "About"],
-  zh: ["常规", "额度", "网络与共享", "模型", "隐私", "可观测性", "同步与备份", "关于"],
+  en: ["General", "Allowances", "Network and sharing", "Models", "Privacy", "Observability", "About"],
+  zh: ["常规", "额度", "网络与共享", "模型", "隐私", "可观测性", "关于"],
 };
 const LABEL = { en: "Settings", zh: "设置" };
 // what each part shows: an element of its own rows, drawn by the page
 const MARK = {
   general: "#themeSegs .opt", usage: "#currencySegs .opt", network: "#proxySegs", models: "#imagesList .row",
-  privacy: "#redactList .row", otel: "#otelList .row", sync: "#syncList .row", about: "#about .row",
+  privacy: "#redactList .row", otel: "#otelList .row", about: "#about .row",
 };
 
 // the tab picked, the parts shown, the tab focused, and the address's tab
@@ -191,30 +191,30 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         assert.deepEqual((await shown(page)).parts, ["general"]);
         await page.keyboard.press("ArrowLeft");
         await page.keyboard.press("ArrowLeft");
-        assert.deepEqual((await shown(page)).on, ["sync"]);
+        assert.deepEqual((await shown(page)).on, ["otel"]);
         assert.equal(await top(page), 0, "the keys move nothing");
 
         // a reload comes back to the part
         await page.reload();
-        await page.locator(MARK.sync).first().waitFor();
-        assert.deepEqual(await shown(page), { on: ["sync"], parts: ["sync"], focus: "", url: "settings/sync" });
+        await page.locator(MARK.otel).first().waitFor();
+        assert.deepEqual(await shown(page), { on: ["otel"], parts: ["otel"], focus: "", url: "settings/otel" });
 
         // another view leaves the tab out of the address; Settings again
         // brings it back
         await page.locator('#nav [data-view="usage"]').click();
         assert.equal(new URL(page.url()).searchParams.get("tab"), null);
         await page.locator("#prefs").click();
-        assert.deepEqual((await shown(page)).url, "settings/sync");
+        assert.deepEqual((await shown(page)).url, "settings/otel");
 
         // the window opened again on Settings (no tab in the address): the
         // part last picked
         const again = await open(lang, [], { url: "/?view=settings", ctx: page.context() });
-        await again.locator(MARK.sync).first().waitFor();
-        assert.deepEqual((await shown(again)).parts, ["sync"]);
+        await again.locator(MARK.otel).first().waitFor();
+        assert.deepEqual((await shown(again)).parts, ["otel"]);
         // a link to a part opens on it, and it is remembered
-        const link = await open(lang, [], { url: "/?view=settings&tab=otel", ctx: page.context() });
-        await link.locator(MARK.otel).first().waitFor();
-        assert.deepEqual((await shown(link)).parts, ["otel"]);
+        const link = await open(lang, [], { url: "/?view=settings&tab=network", ctx: page.context() });
+        await link.locator(MARK.network).first().waitFor();
+        assert.deepEqual((await shown(link)).parts, ["network"]);
         // one not known: the part remembered
         const bad = await open(lang, [], { url: "/?view=settings&tab=nope", ctx: page.context() });
         await bad.locator(MARK.otel).first().waitFor();

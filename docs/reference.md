@@ -1,6 +1,6 @@
 # magpie reference
 
-The full manual: every agent magpie wires, every provider option, the gateway, routing, plugins, the CLI, Docker, sync and the files magpie keeps. For the overview, see the [README](../README.md).
+The full manual: every agent magpie wires, every provider option, the gateway, routing, plugins, the CLI, Docker and the files magpie keeps. For the overview, see the [README](../README.md).
 
 Renamed a project folder? See [relocating Claude Code sessions](session-relocation.md).
 
@@ -15,10 +15,7 @@ the model it is set to. Click a value, pick a model. That is the whole app.
 It lives in the menu bar: click the icon and a panel drops down; the same
 screen also opens as a normal window (`magpie`, or *Open magpie* in the tray menu),
 which opens on the page you last left, as a Mac app comes back as it was,
-and there is a terminal version (`magpie tui`) and a plain CLI. The
-terminal version serves the gateway while it is open when no other magpie
-(the app, `magpie web`, `magpie serve`) does, and says so on its status
-line; agents connected to magpie lose it when it quits.
+and a plain CLI.
 
 ```
   ◉ magpie
@@ -362,7 +359,7 @@ magpie provider deepseek                # one provider in detail
 magpie provider models deepseek         # re-fetch the vendor's list (add ids to choose which to expose)
 magpie provider models deepseek +deepseek-v4 -deepseek-chat   # expose one more, take one out; the rest stay
 magpie provider models deepseek a b c   # the whole list of models to expose, replacing it (all: the default)
-magpie provider refresh deepseek        # re-fetch it, and drop picks it no longer has (the TUI: m)
+magpie provider refresh deepseek        # re-fetch it, and drop picks it no longer has
 magpie provider refresh-every relay 6h  # the gateway fetches its list every 6h (1d, 30m; off; at least 10m; a Remote magpie 10m unless set)
 magpie provider auto-include relay 'gpt-*' 're:claude-.*'  # a newly listed model these match is exposed (none clears)
 magpie provider test deepseek           # one tiny request per API, with latency
@@ -570,9 +567,7 @@ inferred from today's sign-in. OTLP export never carries the account.
 One magpie can serve several computers (an office one, a personal one):
 share it on the network (Settings → Network and sharing → Share on local network), and on each
 other computer add it as a **Remote magpie** — in the app's Add sheet, under
-its own heading, Another computer's magpie, after On this machine; on the
-TUI's Providers page (`a`, then its address and key; `w` changes the address,
-`m` fetches its list again), or
+its own heading, Another computer's magpie, after On this machine; or
 `magpie provider add remote-magpie sk-magpie-… url=http://192.168.1.20:3425 id=office`.
 Each computer's own magpie still wires its agents, while the providers,
 routing groups (`office/group/…`) and usage are the shared one's. A request
@@ -642,15 +637,13 @@ at a URL on the gateway kept for an hour (the same key reads it), a video at
 that a gateway key may not use, is refused with the models that may be used.
 
 WorkBuddy (China)'s daily check-in (签到) is pressed from the app's Usage card
-(*Check in now*), `magpie accounts checkin`, or `c` on the TUI's Usage page,
-which checks in every account signed in on this computer at once; its
+(*Check in now*) or `magpie accounts checkin`, which checks in every account signed in on this computer at once; its
 WorkBuddy lines say how today's went. A shared magpie's accounts are checked
-in on that magpie, from its own app, TUI or CLI.
+in on that magpie, from its own app or CLI.
 
 A vendor with two or more accounts lists each under its Daily check-in in
 **Settings → Usage**, with its own Off/On (#1902). An account turned off is
-left out of the daily check-in and of *Check in now*, the CLI's and the
-TUI's too, while the vendor's other accounts are checked in; its Usage card
+left out of the daily check-in and of *Check in now*, and the CLI's too, while the vendor's other accounts are checked in; its Usage card
 says its auto check-in is off. The choice is kept in `checkinOff` in
 `settings.json`, by the account's entry in the vendor's check-in file
 (`workbuddy|<uid>`), and set with `POST /api/settings/checkin-account
@@ -1307,8 +1300,7 @@ sign-in, such as a service account's key; a relative path is made full from
 the folder the command runs in. `impersonate=` has requests made as that
 service account; the account signed in needs the Service Account Token Creator
 role on it. The app's editor asks the same in **Project ID**,
-**Location**, **Credentials file** and **Service account**; the TUI's `a` asks
-for the project alone, and the CLI sets the rest. A key is refused, and so is
+**Location**, **Credentials file** and **Service account**; the CLI sets the rest. A key is refused, and so is
 an address (`url=` and the like): the project and location make the only one
 its token is sent to. Adding, listing and showing it ask Google nothing; the
 credentials are read when a request is signed.
@@ -2553,7 +2545,7 @@ Anthropic itself. It reads only the account Claude Code is signed in to,
 by running Claude Code's `/usage`:
 
 - once after magpie starts;
-- when you open or refresh the Usage page (in the app or the TUI), or run
+- when you open or refresh the Usage page (in the app), or run
   `magpie quota` or `magpie accounts`, at most every 30 seconds;
 - otherwise again after 5 to 15 minutes (drawn at random each time), and
   only if Claude Code was used since.
@@ -3010,9 +3002,9 @@ user only, and what looks like a key or token is masked in it, though
 nothing magpie logs is meant to carry one. Settings › About › Log has its
 path and an Open that shows its folder. `magpie log` prints its path, the
 older file when there is one, the service's log when `magpie daemon` is
-installed and the log of a gateway `magpie tui` left running; `--path`
+installed and the log of a gateway left running by `magpie serve`; `--path`
 prints the app's alone, `-n N` its last N lines and `-f` follows it,
-across a rotation, until Ctrl+C. `magpie serve`, `magpie web` and the TUI
+across a rotation, until Ctrl+C. `magpie serve` and `magpie web`
 write no `app.log`: their log is the terminal's, or the service's.
 
 A gateway key held to a budget, to some models or to some accounts is told
@@ -3314,7 +3306,7 @@ puts it back), and the tab's foot says how many are hidden. Hiding is the
 panel's only: routing, caps, the Usage page and the menu bar's own cells
 still have it, and a menu bar cell for it still opens its card. A card or
 quota row hidden on the Usage page (its card's *Hide from Overview*) is left
-out of the panel's tab too, and of `magpie tui`'s Usage page; a
+out of the panel's tab too; a
 subscription hidden there whole shows as hidden in the panel's *Arrange*,
 whose *Show* brings it back on the Usage page too. Both are
 kept in magpie's settings (`usageOrder`, `panelUsageHidden`). Which
@@ -3431,7 +3423,7 @@ you press *Add*. `magpie import <link>` does the same in a terminal.
 | `chat`      | OpenAI Chat Completions base URL (`…/v1`)                          |
 | `responses` | OpenAI Responses base URL (`…/v1`)                                 |
 | `anthropic` | Anthropic Messages base URL (the root, without `/v1`)              |
-| `gemini`    | Google Gemini API base URL (`…/v1beta`), as the app's editor and the TUI take one |
+| `gemini`    | Google Gemini API base URL (`…/v1beta`), as the app's editor takes one |
 | `models`    | model ids to expose, comma separated                               |
 | `catalog`   | models.dev provider id, for model names and reasoning levels       |
 | `website`, `keys` | the vendor's site and its API-key page (https)               |
@@ -3707,8 +3699,7 @@ Windows uses the WebView2 runtime that ships with the OS.
 
 Termux uses the Android terminal build: the installer puts it in
 `$PREFIX/bin`, and `make build` selects it automatically. With plain
-`go build` or `go install`, pass `-tags nogui`; use `magpie web` or
-`magpie tui` for the interface. `magpie autostart on` requires Termux:Boot.
+`go build` or `go install`, pass `-tags nogui`; use `magpie web` for the interface. `magpie autostart on` requires Termux:Boot.
 
 ### As a background service
 
@@ -4109,7 +4100,6 @@ gateway translates.
 ```sh
 magpie                          # open the app: a window plus the menu bar icon
 magpie tray                     # menu bar icon only (use this in your login items)
-magpie tui                      # the same thing, in the terminal; serves the gateway while open when no other magpie does
 magpie web                      # the app's window in a browser (WSL, a server over SSH); --lan, --addr, --no-open, --gateway, --tls-cert/--tls-key
                                 # (a new key each run; MAGPIE_WEB_KEY keeps one, for a page run as a service)
                                 # (in a LazyCat app, MAGPIE_WEB_SIGN_IN=lazycat lets the box's administrators in without it)
@@ -4215,143 +4205,19 @@ When Rex's server can't be reached (exit 4) it says to open Rex. The same applie
 carried-over session (StringKe, #4565;
 [`terminal_rex.go`](../internal/gui/terminal_rex.go)).
 
-Keys in the terminal version:
-
-| Key        | Action                                |
-| ---------- | ------------------------------------- |
-| `↑` `↓`    | choose agent                          |
-| `←` `→`    | choose field (model, effort, small …) |
-| `↵`        | open the picker                       |
-| type       | filter; enter accepts custom values   |
-| `s`        | save current setup as a profile       |
-| `p`        | apply or delete (`ctrl+d`) a profile  |
-| `S`        | sync the model catalog                |
-| `q`        | quit                                  |
-
 Agents read their config at startup, so a running session keeps its model
 until you start a new one.
 
 ### Moving to another machine
 
-```sh
-magpie backup                   # writes magpie.magpie-backup, asks for a passphrase twice
-magpie backup --no-keys ~/b.magpie-backup   # the same with no API keys in it
-magpie restore magpie.magpie-backup         # on the other machine
-magpie restore --no-agents b.magpie-backup  # providers, settings, profiles; agents left as they are
-magpie restore --no-library b.magpie-backup # the library here left as it is
-magpie backup --no-usage ~/b.magpie-backup  # no usage history in it
-```
-
-A backup holds your providers (with their keys, unless `--no-keys`), the
-pictures picked for them, the settings, the profiles, every agent's model and
-the library (unless `--no-library`): the instruction sets, the MCP servers and
-the skills with their files, templates and other binaries included (a file
-over 16 MB is left out, and so are the biggest once the skills' files come to
-32 MB; restoring keeps the copy of such a file the other machine already
-has). Without keys, a
-server's environment variables and headers that look like a key go empty.
-Gateway credentials, their names, ids and disabled state travel encrypted
-with Settings too. Restoring Settings replaces the gateway-key store with
-the backed-up one. `--no-keys` leaves gateway credentials and their legacy
-mirror out; restoring it preserves the destination's existing keys instead.
-Restoring the library replaces the one there — what it replaces is kept with
-the library's backups — and writes it into the agents on that machine.
-It is encrypted on your machine (AES-256-GCM, the key derived from the
-passphrase with PBKDF2-SHA256); nothing in it can be read without the
-passphrase. Restoring replaces providers with the same id and adds the rest;
-one that came without a key keeps the key already there. Agent models are set
-only for agents installed on that machine. Subscriptions are not in it: sign
-in to them on each machine. Their model picks and settings come along, and
-show once signed in; the restore, and a sync's status on the other machine,
-name the ones still to sign in to. The plugins added from npm or git come
-along too and are installed where it is put back (one added from a folder
-stays on its machine; without keys, an option whose name looks like a key
-is left out); a plugin's sign-in is not carried, a plugin already there is
-left as it is, and one removed on one machine stays on the others. The usage history comes
-along too (unless `--no-usage`): every call in `usage.jsonl`, gzipped, and
-the quota cards' history. Restoring merges it with the history there: a call
-already there is never added again, so restoring the same backup twice counts
-nothing twice (`magpie restore --no-usage` leaves it out). Piped
-in, the passphrase is the first line of stdin.
+The `magpie backup` and `magpie restore` commands were removed, together
+with Settings › Sync and backup's Export and Import.
 
 ### Keeping machines in sync
 
-*Settings → Sync and backup → WebDAV, S3 or GitHub sync* keeps the same backup
-on a server and brings every machine up to date with it, every 3 minutes while
-the gateway runs. Choose one of these:
-
-- **WebDAV**: a folder on a WebDAV server such as 坚果云, Nextcloud or a
-  Synology.
-- **S3**: a bucket on AWS S3, Cloudflare R2, Backblaze B2, MinIO, Garage, a
-  NAS or any other S3-compatible server.
-- **GitHub**: an existing repository, using a fine-grained token
-  with Contents read and write permission. The repository must be private:
-  sync refuses a public one, whose history would give anyone every sealed version.
-  The address can include a folder, such as `github://owner/repo/magpie-sync`.
-  Each update is a commit to that branch, so the repository also provides a
-  history of the encrypted backup.
-
-The file is sealed on your machine with the passphrase, so the server only
-ever stores ciphertext. Each machine writes only over the version it read (a
-conditional write), so an update that another machine made in between is
-merged rather than lost.
-
-A change to an agent's model (or any of its fields) on one machine reaches
-the others. When sync changes one on a machine and you set it back there,
-that machine keeps its own: the other machines' picks no longer change it
-there, and its picks stay there, while everything else keeps syncing.
-Settings → Sync lists those fields under **Kept on this computer**, and
-**Follow the others** takes the synced value again.
-
-```sh
-magpie webdav on https://dav.jianguoyun.com/dav/ user=me@example.com
-magpie s3 on s3://my-bucket/magpie endpoint=https://<account>.r2.cloudflarestorage.com access-key-id=…
-magpie s3 on s3://backups endpoint=http://nas.local:9000 path-style=yes access-key-id=…
-magpie s3                       # where it syncs to and how the last sync went; magpie s3 now, off
-magpie github on github://owner/private-backups/settings branch=main
-magpie github                   # where it syncs to and how the last sync went; magpie github now, off
-```
-
-For S3:
-
-- `endpoint` is empty for AWS.
-- `region` defaults to `us-east-1`, or to `auto` on R2.
-- `path-style=yes` puts the bucket in the path, which MinIO and most servers
-  you run yourself need.
-- The secret is asked for and saved like the WebDAV password. It is used only
-  with the endpoint and access key it was given for.
-- The bucket must already exist.
-- The access key needs to read and write `<prefix>/magpie/`. On AWS it also
-  needs to list the bucket.
-- A server without conditional writes is supported. There magpie checks the
-  object's ETag just before each write. Two computers that write in the
-  same moment can both pass that check (Aliyun OSS, #1776), and the later
-  write is the one kept. The other computer notices at its next sync, a
-  few minutes later. It finds a file other than the one it wrote, so it
-  merges again from before its own write: what it changed goes back up
-  beside the other computer's change. It never takes the other's file as
-  having seen its own.
-- Shared usage is reconciled only after a complete S3 listing. A missing or
-  repeated continuation token, or a listing still truncated after 100 pages,
-  reports a sync error and keeps previously downloaded usage days in place.
-
-For GitHub:
-
-- Create the repository before enabling sync. Leaving Branch empty uses its
-  default branch. For an empty repository, the first encrypted backup creates
-  the initial commit on that default branch. A selected branch other than the
-  default must already exist.
-- Give a fine-grained token access to this repository with Contents read and
-  write permission. It is asked for by the CLI, never accepted in a command
-  line, and is saved separately from the library's GitHub token.
-- Folder is optional. Files go in `<folder>/magpie/`; every changed backup
-  creates a commit. Unchanged setup creates no backup commit.
-- Use the same encryption passphrase on every computer. It must differ from
-  the GitHub token. The token and sync connection settings stay on each computer.
-- The file limit is 64 MiB. Repository history retains encrypted old versions,
-  including usage files if sharing is enabled.
-- Switching between WebDAV, S3 and GitHub keeps the other services' settings
-  and credentials for switching back; one service syncs at a time.
+Settings › Sync and backup, and the `magpie webdav`, `magpie s3` and
+`magpie github` commands, were removed. Machines no longer keep a shared
+backup on a server.
 
 ## OTLP export
 
@@ -4611,8 +4477,8 @@ MAGPIE_GITHUB_MIRROR=https://gh.example magpie serve
 
 ## Files
 
-magpie's folder, `~/.config/magpie`, is kept flat on purpose: backups,
-sync, Docker volume mounts and older magpies all find each file by its
+magpie's folder, `~/.config/magpie`, is kept flat on purpose: Docker
+volume mounts and older magpies all find each file by its
 name there (#2028). Below, each file says what it is for. A `.lock`
 beside a file is held while it is written, across magpies; a `.bak` is
 the copy made before a write.

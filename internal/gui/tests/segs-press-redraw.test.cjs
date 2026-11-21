@@ -45,8 +45,6 @@ function serve(lang, posted, st) {
     if (url.pathname === "/api/groups") return json({ models: [], groups: [], pools: [] });
     if (url.pathname === "/api/plugins") return json({ plugins: [] });
     if (url.pathname === "/api/usage/quotas") return json([]);
-    // sync set up, so its own controls are drawn
-    if (url.pathname === "/api/davsync") return json({ on: true, kind: "webdav", url: "https://dav.example.test/dav/", user: "u", auto: 3 });
     if (url.pathname.startsWith("/api/")) return json({});
     const file = path.join(assets, url.pathname === "/" ? "index.html" : url.pathname);
     const contentType = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" }[path.extname(file)];
@@ -269,16 +267,11 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
             assert.deepEqual(await page.evaluate(() => optClicks), [{ place, i, live: true }], `${tab}: ${place} option ${i}`);
           }
         };
-        for (const tab of ["general", "usage", "network", "models", "privacy", "otel", "sync", "about"]) {
+        for (const tab of ["general", "usage", "network", "models", "privacy", "otel", "about"]) {
           await page.evaluate((tab) => document.querySelector("#setTab-" + tab).click(), tab);
           await page.locator(`#setPage-${tab}`).waitFor();
           await settle(page);
-          if (tab === "sync") {
-            // its form opened, for the kind of server it syncs to
-            await page.locator("#syncList .row.pref").first().locator(".val button").nth(1).click();
-            await page.locator("#syncList .sync-form .segs").waitFor();
-            await sweep(tab);
-          } else await sweep(tab);
+          await sweep(tab);
         }
         // each subscription's own, in its provider's editor
         for (const id of SUBS) {
@@ -288,8 +281,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
           await sweep(id, ".editor .prov-prefs");
         }
         assert.deepEqual(missed, [], "controls the redraw left in place");
-        // Theme, Language, Text size, … each warm-up's and check-in's, Proxy, the local network's, Privacy's, OTel's, Sync's, About's
-        assert(done.size >= 49, `only ${done.size} controls: ${[...done].join(", ")}`);
+        // Theme, Language, Text size, … each warm-up's and check-in's, Proxy, the local network's, Privacy's, OTel's, About's
+        assert(done.size >= 45, `only ${done.size} controls: ${[...done].join(", ")}`);
         assert.deepEqual(posted, [], "a stopped click saved something");
         assert.deepEqual(errors, []);
       });

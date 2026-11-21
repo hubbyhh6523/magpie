@@ -1703,7 +1703,6 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 	callerKeyRoutes(mux)
 	sessionRoutes(mux, w)
 	sessionManageRoutes(mux, w)
-	backupRoutes(mux, w)
 	dataFolderRoutes(mux, w)
 	restartRoutes(mux, w)
 	mtlsRoutes(mux, w)

@@ -409,12 +409,9 @@ computer's memory over the other's.
   in `removed` for 180 days (`keepRemoved`), so a computer that still has
   it doesn't bring it back; a copy changed after the deletion stays
   (`TestSyncDeletionStaysDeleted`, `TestSyncEditAfterDeletionKeepsIt`).
-- Switches: sync's **Memory** tick (`davsync.Config.Memory`, on unless
-  turned off, since a sync file is always sealed with a passphrase), and
-  Export's **With memory** and Import's **Bring in memory too**, both on.
-  A computer with the tick off sends none and takes none, and leaves the
-  server's copy as it was (`TestSyncMemory`, `TestBackupMergesMemory`).
-- After a sync or restore changes memory, `library.PublishMemory` writes the
+- Switches: sync's **Memory** tick, and Export's **With memory** and
+  Import's **Bring in memory too**, went away with sync and backup.
+- After memory changes, `library.PublishMemory` writes the
   digests again.
 
 ### Promotion
@@ -448,14 +445,13 @@ over the In use list, unsearched and not narrowed to a scope
   (`MadeSkill`), so it isn't in the digest beside the skill
   (`TestMemorySkill`, `TestSuggestSkillAndDecline`).
 - Turned down (`Decline`, `POST /api/memory/decline`): the key goes in
-  `declined` (the last 500), which goes with sync, so it isn't suggested
-  on another computer either. A global suggestion's key is its memories'
+  `declined` (the last 500). A global suggestion's key is its memories'
   ids, so another project joining it is a new suggestion.
 
 ## Verification
 
 ```sh
-mote-run go test ./internal/memory ./internal/backup ./internal/davsync ./internal/memdistill ./internal/memembed ./internal/library
+mote-run go test ./internal/memory ./internal/memdistill ./internal/memembed ./internal/library
 mote-run sh -c 'MAGPIE_EMBED_DIR=$HOME/models/pml go test -run Embedder ./internal/pii/guard'
 mote-run go test -run 'Distill|Dream' ./internal/gui
 mote-run go test -tags nogui -run 'MemoryMCP|OwnMCP' ./internal/gateway

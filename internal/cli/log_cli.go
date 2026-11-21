@@ -20,13 +20,12 @@ import (
 
 	"github.com/yetone/magpie/internal/applog"
 	"github.com/yetone/magpie/internal/daemon"
-	"github.com/yetone/magpie/internal/tui"
 )
 
 const logUsage = `usage: magpie log [--path] [-n N] [-f]
   where magpie's logs are on this computer: the app's own (the app, the menu bar and the
   panel write it, wherever they were opened from), the one before it, and the logs of
-  magpie serve as a service (magpie daemon) or left running by magpie tui, when there are.
+  magpie serve as a service (magpie daemon), when there are.
   --path  the app's log alone, its path only
   -n N    the app log's last N lines (100 with -f)
   -f      the app log's last lines, then each line as it is written, until Ctrl+C
@@ -87,9 +86,6 @@ func logsHere(path string) string {
 	}
 	if st, err := daemon.Get(); err == nil && st.Installed && st.Logs != "" {
 		fmt.Fprintf(&b, "%s\n  magpie serve as a service (magpie daemon)\n", st.Logs)
-	}
-	if bg := tui.BackgroundLog(); exists(bg) {
-		fmt.Fprintf(&b, "%s\n  magpie serve left running by magpie tui as it quit\n", bg)
 	}
 	return b.String()
 }

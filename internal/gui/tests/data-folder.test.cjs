@@ -1,6 +1,7 @@
 // Run with Node's test runner and Playwright on the module path; see README.md.
-// Settings › Sync's Data folder (CHENGJIAHEGOXIS and buhaodeshiyehao on X:
-// magpie's files on another disk). The row shows where magpie's files are,
+// Settings › General's Data folder (CHENGJIAHEGOXIS and buhaodeshiyehao on X:
+// magpie's files on another disk; it lived on Settings › Sync until sync
+// and backup went away). The row shows where magpie's files are,
 // with Show and Move…; Move… says what a move does in the app's own dialog
 // before anything is picked, Cancel posts nothing, and Choose a folder…
 // posts the move, the button then saying magpie restarts. A move that
@@ -45,8 +46,6 @@ function serve(lang, posts, state) {
     if (pathname === "/api/usage/quotas") return json([]);
     if (pathname === "/api/groups") return json({ groups: [], models: [] });
     if (pathname === "/api/plugins") return json({ plugins: [] });
-    if (pathname === "/api/davsync") return json({ on: false });
-    if (pathname === "/api/autobackup") return json({ on: false, hours: 24, keep: 7, dir: "~/backups", backups: [] });
     if (pathname === "/api/datafolder") return json(state.view);
     if (pathname.startsWith("/api/datafolder/")) {
       const action = pathname.slice("/api/datafolder/".length);
@@ -88,15 +87,15 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
 
         await page.goto("http://magpie.test/");
         await page.locator("#prefs").click();
-        await openPart(page, "sync");
-        const list = page.locator("#syncList");
+        await openPart(page, "general");
+        const list = page.locator("#dataFolderList");
         const row = list.locator(".row.pref.data-folder");
         await row.waitFor({ state: "visible" });
         // the app opened again on the server's view now
         const reopen = async () => {
           await page.reload();
           await page.locator("#prefs").click();
-          await openPart(page, "sync");
+          await openPart(page, "general");
           await row.waitFor({ state: "visible" });
         };
         assert.equal(await row.locator(".name").textContent(), w("Data folder"));
@@ -127,14 +126,14 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         await row.locator("button", { hasText: w("Move…") }).click();
         await ask.locator("button", { hasText: w("Choose a folder…") }).click();
         await ask.waitFor({ state: "detached" });
-        await page.waitForFunction(() => document.querySelectorAll("#syncList .data-folder-said").length === 2);
+        await page.waitForFunction(() => document.querySelectorAll("#dataFolderList .data-folder-said").length === 2);
         assert.deepEqual(await row.locator(".data-folder-said").allTextContents(), [
           w("Moves to {dir} when magpie starts again", { dir: disk }),
           w("Another magpie serves the gateway (magpie serve): stop it, then open magpie again to move them"),
         ]);
         assert.equal(await row.locator("button", { hasText: w("Move…") }).count(), 0, "no second move while one waits");
         await row.locator("button", { hasText: w("Cancel") }).click();
-        await page.waitForFunction(() => document.querySelectorAll("#syncList .data-folder-said").length === 0);
+        await page.waitForFunction(() => document.querySelectorAll("#dataFolderList .data-folder-said").length === 0);
         assert.deepEqual(posts, ["move", "move", "cancel"]);
 
         // moved: the folder on the disk, and Move back, which asks too;
@@ -155,7 +154,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         const wide = await page.evaluate(() => {
           const out = [];
           if (document.scrollingElement.scrollWidth > innerWidth) out.push("page " + document.scrollingElement.scrollWidth);
-          for (const r of document.querySelectorAll("#syncList .row.pref")) {
+          for (const r of document.querySelectorAll("#dataFolderList .row.pref")) {
             const b = r.getBoundingClientRect();
             if (b.right > innerWidth + 0.5 || r.scrollWidth > r.clientWidth + 1) out.push(r.querySelector(".name")?.textContent + " " + b.right + "/" + r.scrollWidth + ">" + r.clientWidth);
           }
