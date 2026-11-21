@@ -54,7 +54,7 @@ type Manifest struct {
 	// (Contribute) that does nothing else
 	Apply func(*Ctx) error
 	// Parts are the window's parts it is, by slot: "nav.page" sessions,
-	// "settings.section" otel, "part" groups (whatever the page marks
+	// "settings.section" <id>, "part" groups (whatever the page marks
 	// data-feature="<id>"). The runtime contributes them before Apply.
 	Parts []Part
 	// SetAt is where Settings has its settings, when it has any there: the

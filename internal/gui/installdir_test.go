@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // TestInstallWordsEveryLanguage: each language the dialog speaks has every
@@ -28,8 +28,8 @@ func TestInstallWordsEveryLanguage(t *testing.T) {
 			err  error
 			want []string
 		}{
-			{update.ErrNeedsAdmin, []string{dir}},
-			{update.ErrDownloadFolder, []string{dir}},
+			{sysutil.ErrNeedsAdmin, []string{dir}},
+			{sysutil.ErrDownloadFolder, []string{dir}},
 			{errors.New("disk full"), []string{dir, "disk full"}},
 		} {
 			got := w.refusal(dir, c.err)

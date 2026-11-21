@@ -38,11 +38,8 @@ var readOnlyRefused = []string{
 	"POST " + ChatPagePath + "/v1/tools/tts",
 	// a Codex reset, which can't be undone (#3850)
 	"POST " + provider.RemoteCodexResetPath,
-	// an update another magpie asks for
-	"POST " + provider.RemoteUpdatePath,
 	"GET /v1/magpie/route", "GET /v1/magpie/trace",
 	"GET " + ClaudeRunsPath, "GET " + HeapPath, "GET " + CPUPath, "GET " + GoroutinesPath,
-	"POST " + RestartPath,
 	AdminPath, "POST " + KeysPath, "GET " + KeysPath, "DELETE " + KeysPath + "/{id}", "POST " + OIDCKeysPath,
 	"GET /v1/magpie/omarchy", "OPTIONS /v1/magpie/omarchy",
 	// models, a WebSocket's upgrade and count_tokens among them

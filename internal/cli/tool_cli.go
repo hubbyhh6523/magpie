@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/gateway"
-	"github.com/yetone/magpie/internal/imagemcp"
 	"github.com/yetone/magpie/internal/lazyre"
 )
 
@@ -891,7 +890,7 @@ func saveMade(g *toolGateway, a toolAnswer, output, prompt string) ([]string, er
 				return saved, err
 			}
 		}
-		path, err := imagemcp.Target(dir, at, prompt, madeExt(m.data), i, len(all))
+		path, err := saveTarget(dir, at, prompt, madeExt(m.data), i, len(all))
 		if err != nil {
 			return saved, err
 		}
@@ -931,3 +930,70 @@ func madeExt(data []byte) string {
 	}
 	return ".png"
 }
+
+var unslug = lazyre.New(`[^a-z0-9]+`)
+
+// saveTarget is where the i-th of n files made from prompt, of extension
+// ext, goes under dir: path as a file (numbered when n > 1) or a folder,
+// else a name from the prompt in dir's generated-images/
+// (generated-videos/); never a file that is there. Taken from the image
+// MCP server's Target, which is gone with it.
+func saveTarget(dir, path, prompt, ext string, i, n int) (string, error) {
+	folder := "generated-images"
+	if videoExt[ext] {
+		folder = "generated-videos"
+	}
+	d, name := filepath.Join(dir, folder), ""
+	if path != "" {
+		p := path
+		if strings.HasPrefix(p, "~/") {
+			home, _ := os.UserHomeDir()
+			p = filepath.Join(home, p[2:])
+		} else if !filepath.IsAbs(p) {
+			p = filepath.Join(dir, p)
+		}
+		if st, err := os.Stat(p); (err == nil && st.IsDir()) || strings.HasSuffix(path, "/") || filepath.Ext(p) == "" {
+			d = p
+		} else {
+			d, name = filepath.Dir(p), filepath.Base(p)
+		}
+	}
+	if name == "" {
+		slug := strings.Trim(unslug.ReplaceAllString(strings.ToLower(prompt), "-"), "-")
+		if len(slug) > 40 {
+			slug = strings.TrimRight(slug[:40], "-")
+		}
+		if slug == "" {
+			slug = "image"
+		}
+		name = slug + "-" + time.Now().Format("20060102-150405") + ext
+	}
+	base, e := strings.TrimSuffix(name, filepath.Ext(name)), filepath.Ext(name)
+	// the image is saved as what it is: hero.png that came back a JPEG is
+	// hero.jpg, and the answer says so; a name with no image extension,
+	// hero.v2, is given one
+	switch l := strings.ToLower(e); {
+	case l == ".jpeg" && ext == ".jpg", l == ext:
+	case imageExt[l], videoExt[l]:
+		e = ext
+	default:
+		base, e = name, ext
+	}
+	if n > 1 {
+		base = fmt.Sprintf("%s-%d", base, i+1)
+	}
+	out := filepath.Join(d, base+e)
+	for k := 2; ; k++ {
+		if _, err := os.Stat(out); errors.Is(err, os.ErrNotExist) {
+			return out, nil
+		}
+		out = filepath.Join(d, fmt.Sprintf("%s-%d%s", base, k, e))
+	}
+}
+
+// imageExt are the extensions of the formats an image comes back in, videoExt
+// those a video may be given.
+var (
+	imageExt = map[string]bool{".png": true, ".jpg": true, ".jpeg": true, ".webp": true, ".gif": true}
+	videoExt = map[string]bool{".mp4": true, ".mov": true, ".webm": true, ".m4v": true}
+)

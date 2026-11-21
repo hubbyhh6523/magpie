@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/yetone/magpie/internal/sysutil"
 	"github.com/yetone/magpie/internal/testenv"
-	"github.com/yetone/magpie/internal/update"
 )
 
 // moveAndBack does what Move, and putBack after a failed one, do with a
@@ -234,7 +234,7 @@ func TestMoveCommandCode(t *testing.T) {
 	}
 	// 0.1.7 and before said every model took no pictures (the list says
 	// nothing of them), which magpie takes over models.dev's answer
-	if update.Newer("0.1.8", movers[CommandCodePlanID].min) {
+	if sysutil.Newer("0.1.8", movers[CommandCodePlanID].min) {
 		t.Fatalf("the move installs commandcode-auth %q, which marks every model text-only", movers[CommandCodePlanID].min)
 	}
 }

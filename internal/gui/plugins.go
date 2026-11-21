@@ -605,7 +605,6 @@ var (
 )
 
 func pluginRoutes(mux *http.ServeMux, w Windows) {
-	pluginCountRoutes(mux)
 	// the updates waiting for the reader, which put a dot on Plugins
 	mux.HandleFunc("GET /api/plugins/updates", func(rw http.ResponseWriter, r *http.Request) {
 		writeJSON(rw, plugin.PendingUpdates())

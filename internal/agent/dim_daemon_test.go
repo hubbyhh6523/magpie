@@ -15,7 +15,7 @@ import (
 
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/provider"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // fakeDim is Dim alpha's daemon as magpie talks to it: Provider records
@@ -245,8 +245,8 @@ func TestDimFillsItsMagpieProvider(t *testing.T) {
 	if d := f.providers["deepseek"]; d.version != 7 || d.key != "sk-users" || !d.enabled || d.base != "https://api.deepseek.com/v1" {
 		t.Fatalf("the user's own provider changed: %+v", d)
 	}
-	if update.ShellFunctionIn("dima") != nil {
-		t.Fatalf("dima function added in %v", update.ShellFunctionIn("dima"))
+	if sysutil.ShellFunctionIn("dima") != nil {
+		t.Fatalf("dima function added in %v", sysutil.ShellFunctionIn("dima"))
 	}
 	if s := a.Start(); s.Bin != "dima" || s.Model != "magpie/deepseek/pro" || len(s.Env) != 0 {
 		t.Fatalf("start %+v", s)

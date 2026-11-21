@@ -10,8 +10,8 @@ import (
 // everyone, each by the key Discover gives it: a package magpie's list
 // names, or a repository tagged Topic, by its Spec. A plugin from a
 // private repository, a folder, or a package neither names is never in
-// it: what the day's report and a like send of the user's plugins is
-// this and nothing else (internal/stats).
+// it: what the day's report names of the user's plugins is this and
+// nothing else.
 func Public(ctx context.Context) []string {
 	installed := Load().Plugins
 	if len(installed) == 0 {

@@ -13,7 +13,6 @@ import (
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/pluginrt"
 	"github.com/yetone/magpie/internal/provider"
-	"github.com/yetone/magpie/internal/settings"
 	_ "github.com/yetone/magpie/plugins/all"
 )
 
@@ -56,7 +55,7 @@ func TestBuiltinSwitch(t *testing.T) {
 		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 			t.Fatal(err)
 		}
-		if len(out) != 14 {
+		if len(out) != 12 {
 			t.Fatalf("the built-ins: %+v", out)
 		}
 		for _, b := range out {
@@ -73,21 +72,6 @@ func TestBuiltinSwitch(t *testing.T) {
 	}
 	if rec := postBuiltin(h, `{"id":"nope","on":true}`); rec.Code != http.StatusBadRequest {
 		t.Fatalf("an unknown plugin: %d", rec.Code)
-	}
-	// Observability in use: sending to a collector
-	s := settings.Load()
-	s.OTel.Enabled = true
-	s.OTel.Endpoint = "http://127.0.0.1:4318"
-	if err := settings.Save(s); err != nil {
-		t.Fatal(err)
-	}
-	if rec := postBuiltin(h, `{"id":"otel","on":false}`); rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "in use") {
-		t.Fatalf("otel off while in use: %d %s", rec.Code, rec.Body)
-	}
-	for _, b := range builtinsState() {
-		if b.ID == "otel" && (!b.On || b.Chosen || b.InUse != 1 || b.Use != "Sending to a collector" || b.Source != pluginrt.FromInUse) {
-			t.Fatalf("otel in use: %+v", b)
-		}
 	}
 }
 
@@ -135,7 +119,7 @@ func TestBootSaysBuiltinsOff(t *testing.T) {
 	if err := pluginrt.Set("library", true); err != nil {
 		t.Fatal(err)
 	}
-	if b := boot(); !strings.Contains(b, `"featuresOff":["groups","otel","sessions","warmups"]`) {
+	if b := boot(); !strings.Contains(b, `"featuresOff":["groups","sessions"]`) {
 		t.Fatalf("Essentials picked: %s", b)
 	}
 }
@@ -373,13 +357,11 @@ func TestBuiltinSaysWhereItsSettingsAre(t *testing.T) {
 	want := map[string][3]string{
 		"redact":   {"privacy #redactList", "masking", ""},
 		"search":   {"models #searchList", "", ""},
-		"otel":     {"otel #otelList", "", ""},
 		"gateway":  {"network #portList", "gateway", ""},
 		"library":  {"", "library", ""},
 		"groups":   {"", "", "groups"},
 		"budget":   {"", "", "gateway"},
 		"rotation": {"", "", "providers"},
-		"warmups":  {"", "", "providers"},
 		"tools":    {"", "", "plugins"},
 	}
 	for _, b := range builtinsState() {

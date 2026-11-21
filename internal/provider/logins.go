@@ -1236,7 +1236,11 @@ func loginsNow(agent string) []Login {
 			{"antigravity", func() []Login { return googleLoginList("antigravity") }},
 		} {
 			if !PluginServes(b.id) {
-				side = append(side, b.list()...)
+				// a built-in whose code is gone has no list: its
+				// accounts are the plugin's now, if it has one
+				if b.list != nil {
+					side = append(side, b.list()...)
+				}
 				continue
 			}
 			// a moved built-in's, from its plugin, where the built-in's stood

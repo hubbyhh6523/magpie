@@ -9,7 +9,7 @@ import (
 
 	"github.com/yetone/magpie/internal/appdir"
 	"github.com/yetone/magpie/internal/gateway"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // Settings › Sync's Data folder (CHENGJIAHEGOXIS on X: magpie's files on
@@ -51,7 +51,7 @@ var servedBy = gateway.ServedBy
 // stand in for it.
 var restartSelf = func() error {
 	if b := bundleOf(); b != "" {
-		return update.Relaunch(b, true, false)
+		return sysutil.Relaunch(b, true, false)
 	}
 	exe, err := executable()
 	if err != nil {

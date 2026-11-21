@@ -36,7 +36,7 @@ import (
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/source"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // CLI is what magpie knows of an agent's command-line program.
@@ -1038,14 +1038,14 @@ var updating sync.Map // agent id → an update running
 // them.
 var (
 	canWrite = writable
-	adminNPM = update.CanRunElevated()
+	adminNPM = sysutil.CanRunElevated()
 )
 
 // runAdmin runs an update as administrator; a var so tests never ask for
 // one.
 var runAdmin = func(ctx context.Context, u *updater) ([]byte, error) {
 	home, _ := os.UserHomeDir()
-	return update.RunElevated(ctx, home, updateEnv(u), u.cmd...)
+	return sysutil.RunElevated(ctx, home, updateEnv(u), u.cmd...)
 }
 
 // AdminError is an install or update that needs an administrator and
@@ -1173,9 +1173,9 @@ func (a *Agent) UpdateCLI() (CLI, error) {
 		run = runAdmin
 	}
 	out, err := run(ctx, u)
-	if u.admin && (errors.Is(err, update.ErrCanceled) || errors.Is(err, update.ErrNoAdmin)) {
+	if u.admin && (errors.Is(err, sysutil.ErrCanceled) || errors.Is(err, sysutil.ErrNoAdmin)) {
 		// the prompt declined, or none shown: npm never ran
-		return CLI{}, &AdminError{Agent: a.Name, Prefix: u.prefix, Command: u.shown(), Via: "npm", Canceled: errors.Is(err, update.ErrCanceled), Err: err}
+		return CLI{}, &AdminError{Agent: a.Name, Prefix: u.prefix, Command: u.shown(), Via: "npm", Canceled: errors.Is(err, sysutil.ErrCanceled), Err: err}
 	}
 	if err == nil && u.reshim != nil {
 		// what it installed is kept even when no shim is made for it

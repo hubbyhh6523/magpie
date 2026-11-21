@@ -10,8 +10,6 @@ import (
 
 	"github.com/yetone/magpie/internal/lazyre"
 	"github.com/yetone/magpie/internal/proc"
-	"github.com/yetone/magpie/internal/rosetta"
-	"github.com/yetone/magpie/internal/winarm"
 )
 
 // FeedbackURL is the post on X where users reply with feedback; Settings ›
@@ -53,10 +51,11 @@ func osVersion() string {
 }
 
 // underRosetta and emulated say this build runs translated: an Intel one
-// on Apple silicon, an x64 one on Windows on Arm. Tests set them.
+// on Apple silicon, an x64 one on Windows on Arm. The detection is gone,
+// so both are always false. Tests set them.
 var (
-	underRosetta = rosetta.Translated
-	emulated     = winarm.Emulated
+	underRosetta = func() bool { return false }
+	emulated     = func() bool { return false }
 )
 
 // archNote is the architecture this build is for, and the computer's

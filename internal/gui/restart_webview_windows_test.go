@@ -19,7 +19,7 @@ import (
 	"golang.org/x/sys/windows"
 
 	"github.com/yetone/magpie/internal/proc"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // vsoullai on X (0.1.4096, Windows): the restart after an update didn't
@@ -191,7 +191,7 @@ func restartWebViewNew(id string, report func(string, ...any), end func(bool)) {
 		}()
 	}
 	report("waiting as Run does")
-	update.AwaitPredecessor()
+	sysutil.AwaitPredecessor()
 	webView2Ready(dir, id, 30*time.Second)
 	report("making the app")
 	loaded := make(chan struct{}, 16)

@@ -31,10 +31,8 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/yetone/magpie/internal/lazyre"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
 // cmdVar is a variable in a command or an arg: ${NAME}, $NAME, or
@@ -252,7 +250,7 @@ var homes struct {
 }
 
 // distroHome is $HOME in a WSL distro, as a login shell there has it; ""
-// when it couldn't be asked. A var for tests.
+// when it couldn't be asked. WSL is gone, so it is always "". A var for tests.
 var distroHome = func(distro string) string {
 	homes.Lock()
 	h, ok := homes.of[distro]
@@ -260,19 +258,5 @@ var distroHome = func(distro string) string {
 	if ok {
 		return h
 	}
-	out, err := wslrun.Run(10*time.Second, "-d", distro, "-e", "sh", "-lc", `printf %s "$HOME"`)
-	if err != nil {
-		return ""
-	}
-	h = strings.TrimSpace(string(out))
-	if !strings.HasPrefix(h, "/") {
-		return ""
-	}
-	homes.Lock()
-	if homes.of == nil {
-		homes.of = map[string]string{}
-	}
-	homes.of[distro] = h
-	homes.Unlock()
-	return h
+	return ""
 }

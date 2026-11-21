@@ -16,10 +16,10 @@ import (
 	"golang.org/x/sys/windows"
 
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
-// askInstallFolder has update.Settle ask where to install, in the
+// askInstallFolder has sysutil.Settle ask where to install, in the
 // reader's language, when someone is there to answer. The question comes
 // before anything else starts, the gateway included: Install opens the
 // installed copy in this one's place. So a start no one can answer (a
@@ -32,13 +32,13 @@ import (
 // before there was a question.
 func askInstallFolder() {
 	if why := unanswerable(os.Getenv("CI"), visibleDesktop()); why != "" {
-		update.AskFolder = nil
+		sysutil.AskFolder = nil
 		log.Println("install: not asking where to install:", why)
 		return
 	}
-	update.AskFolder = func(suggest string, check func(string) error) string {
+	sysutil.AskFolder = func(suggest string, check func(string) error) string {
 		w := installWordsFor(trayLang(settings.Shared().Lang, systemLang))
-		exe, err := update.Executable()
+		exe, err := sysutil.Executable()
 		if err != nil {
 			exe = ""
 		}
@@ -87,7 +87,7 @@ func installDialog(w installWords, dir, footer string, check func(string) error)
 			if picked == "" {
 				continue
 			}
-			dir, note = update.InstallDir(picked), ""
+			dir, note = sysutil.InstallDir(picked), ""
 			if err := check(dir); err != nil {
 				note = w.refusal(dir, err)
 			}

@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/yetone/magpie/internal/gateway"
 )
 
 // magpie healthcheck, a container's HEALTHCHECK, passes only while a
@@ -135,20 +133,6 @@ func TestHealthcheckRefusesWhatItDoesNotKnow(t *testing.T) {
 		if err := run(args); err == nil || strings.Contains(err.Error(), "no gateway at") {
 			t.Errorf("magpie %v: %v", args, err)
 		}
-	}
-}
-
-// `magpie update` asked the address it knew and said "magpie isn't running"
-// while the service served on another one: its restart now goes where the
-// running magpie says it listens.
-func TestUpdateRestartsTheGatewayItFindsWithoutMagpieAddr(t *testing.T) {
-	addr := fakeServing(t, 4242)
-	writeListening(t, addr, 4242)
-	if got := restartRunning(gateway.ClientURL(), "v9.9.10"); !strings.Contains(got, "restarts into v9.9.10") {
-		t.Errorf("update found no running magpie: %q", got)
-	}
-	if got := restartRunning(gateway.URL(), "v9.9.10"); !strings.Contains(got, "isn't running") {
-		t.Errorf("the address Settings has is not where the fake serves: %q", got)
 	}
 }
 

@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
-// The Windows app opened from Downloads installs itself (update.Settle),
+// The Windows app opened from Downloads installs itself (sysutil.Settle),
 // and the first time it asks where, in a dialog of Windows' own
 // (installdir_windows.go): the folder, Install, Change… and Cancel, as an
 // installer's folder page has them (feng_21795_78266 on Discord).
@@ -92,9 +92,9 @@ func (w installWords) footer(exe string) string {
 // refusal is what the dialog says about dir, which check refused with err.
 func (w installWords) refusal(dir string, err error) string {
 	switch {
-	case errors.Is(err, update.ErrNeedsAdmin):
+	case errors.Is(err, sysutil.ErrNeedsAdmin):
 		return fmt.Sprintf(w.admin, dir)
-	case errors.Is(err, update.ErrDownloadFolder):
+	case errors.Is(err, sysutil.ErrDownloadFolder):
 		return fmt.Sprintf(w.downloads, dir)
 	}
 	return fmt.Sprintf(w.failed, dir, err)

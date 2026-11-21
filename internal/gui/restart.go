@@ -5,32 +5,37 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"time"
 
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // A restart of magpie as it is, asked for from the tray menu or Settings'
 // version row (yansheng1003 on X: "请在刷新旁边增加一个重启按钮"). What a
 // user changes is meant to apply live, and most of it does; this is the
 // way out for what doesn't yet, without quitting and opening magpie by
-// hand. It goes the way the updater's restart goes: on a Mac or Linux the
-// new magpie takes the gateway over while this one finishes its requests
-// (handover.go); elsewhere it opens once this one has exited.
+// hand. On a Mac or Linux the new magpie takes the gateway over while
+// this one finishes its requests (handover.go); elsewhere it opens once
+// this one has exited.
 
-// runStarted is when this run of magpie started: /api/update's run.
-var runStarted = time.Now().UnixNano()
+// relaunchBinary is sysutil.RelaunchBinary; tests stand in for it.
+var relaunchBinary = sysutil.RelaunchBinary
+
+// bundleOf and executable are sysutil.Bundle and sysutil.Executable; tests
+// stand in for them.
+var (
+	bundleOf   = sysutil.Bundle
+	executable = sysutil.Executable
+)
+
+// canElevate is sysutil.CanElevate; tests stand in for it.
+var canElevate = sysutil.CanElevate
 
 // restartSelfNow arranges for this magpie to start again once it is gone;
-// the caller then quits (leave). An update staged is installed on the way,
-// as the updater's restart would. magpie web runs again in its own place
+// the caller then quits (leave). magpie web runs again in its own place
 // (Web.Wait). False when it can't: the caller runs on.
 func restartSelfNow(web, window bool, view string) bool {
 	if pending.Load() != nil {
 		return false // a handover under way restarts already
-	}
-	if updates.json().State == "ready" {
-		return restartToUpdate(web, window, view)
 	}
 	unmarkQuietRestart() // one asked for comes to the front
 	if web {
@@ -46,7 +51,7 @@ func restartSelfNow(web, window bool, view string) bool {
 			return false
 		}
 	}
-	// the Mac's always opens its window, as the updater's asked restart does
+	// the Mac's always opens its window
 	if bundle != "" {
 		window = true
 	}
@@ -55,7 +60,7 @@ func restartSelfNow(web, window bool, view string) bool {
 	}
 	var err error
 	if bundle != "" {
-		err = update.Relaunch(bundle, window, false)
+		err = sysutil.Relaunch(bundle, window, false)
 	} else {
 		err = relaunchBinary(exe, "", window, view)
 	}

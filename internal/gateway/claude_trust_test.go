@@ -14,7 +14,6 @@ import (
 	"github.com/yetone/magpie/internal/claudetui"
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/testenv"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
 // savedClaudeDir is a saved Claude account's config directory, as
@@ -174,10 +173,6 @@ func TestClaudeTrustKeysAsClaudeCodeKeys(t *testing.T) {
 		if got := claudeTrustKeys(claudeCLI{}, `/tmp/a\b`); !slices.Contains(got, `/tmp/a\b`) {
 			t.Errorf("a backslash in a Unix name was changed: %v", got)
 		}
-	}
-	got = claudeTrustKeys(claudeCLI{wsl: &wslrun.Tool{Mount: "/mnt/"}}, `C:\Users\me\AppData\Local\Temp\magpie-claude-work`)
-	if len(got) != 1 || got[0] != "/mnt/c/Users/me/AppData/Local/Temp/magpie-claude-work" {
-		t.Errorf("Claude Code in WSL runs in its mount of the folder, keys %v", got)
 	}
 }
 

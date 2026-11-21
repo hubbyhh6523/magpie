@@ -32,11 +32,8 @@ import (
 	"github.com/yetone/magpie/internal/access"
 	"github.com/yetone/magpie/internal/agent"
 	"github.com/yetone/magpie/internal/applog"
-	"github.com/yetone/magpie/internal/autostart"
-	"github.com/yetone/magpie/internal/bark"
 	"github.com/yetone/magpie/internal/catalog"
 	"github.com/yetone/magpie/internal/codexcat"
-	"github.com/yetone/magpie/internal/desktopiso"
 	"github.com/yetone/magpie/internal/filememo"
 	"github.com/yetone/magpie/internal/fonts"
 	"github.com/yetone/magpie/internal/fx"
@@ -56,7 +53,7 @@ import (
 	"github.com/yetone/magpie/internal/sessions"
 	"github.com/yetone/magpie/internal/settings"
 	"github.com/yetone/magpie/internal/settingsapi"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 	"github.com/yetone/magpie/internal/usage"
 )
 
@@ -65,13 +62,12 @@ import (
 // told once, and only until the user dismisses it for this version. The
 // check is a bare Lstat: telling a *stale* copy from a current one would
 // mean running the old binary, and `magpie version` isn't read-only — it
-// migrates the user's settings first, with the old build's migrations. Only
-// `magpie update`, which the user started, reads versions (update.StaleCLI).
+// migrates the user's settings first, with the old build's migrations. Versions are never read here.
 // "" when the command is the link or absent, this isn't the Mac, or the
 // advice was dismissed for this version.
 func cliBehind() string {
 	cliBehindOnce.Do(func() {
-		cli := update.CopiedCLI()
+		cli := sysutil.CopiedCLI()
 		if cli == "" {
 			return
 		}
@@ -118,10 +114,10 @@ func cliBehindRoutes(mux *http.ServeMux) {
 		rw.WriteHeader(http.StatusNoContent)
 	})
 	// Settings' Command line: what `magpie` runs in each shell, and this
-	// app's put there when asked (update.AddCLI); shell names the one whose
+	// app's put there when asked (sysutil.AddCLI); shell names the one whose
 	// profile gets ~/.local/bin
 	mux.HandleFunc("GET /api/cli", func(rw http.ResponseWriter, r *http.Request) {
-		writeJSON(rw, update.ReadCLI())
+		writeJSON(rw, sysutil.ReadCLI())
 	})
 	// Settings › About's Open-source licenses: the notices this binary
 	// carries (notices.Text, THIRD_PARTY_NOTICES)
@@ -136,7 +132,7 @@ func cliBehindRoutes(mux *http.ServeMux) {
 			fail(rw, err)
 			return
 		}
-		v, err := update.AddCLI(in.Shell)
+		v, err := sysutil.AddCLI(in.Shell)
 		if err != nil {
 			fail(rw, err)
 			return
@@ -807,9 +803,9 @@ type searchFailedJSON struct {
 	At           time.Time `json:"at"`
 }
 
-// loginState is whether magpie opens at login, as the system will act on
-// it. A var for the tests: the real one asks the user's own system.
-var loginState = autostart.Enabled
+// loginState is whether magpie opens at login. Autostart is gone, so it
+// is always off; a var for the tests.
+var loginState = func() bool { return false }
 
 // codexRunWindow is a model and the window magpie tells Codex it has.
 type codexRunWindow struct {
@@ -921,8 +917,7 @@ func settingsState() settingsJSON {
 			s.OTelEnv = true
 		}
 	}
-	login := loginState()
-	s.Login, s.LoginAllow = login != autostart.Off, login == autostart.NeedsAllowing
+	s.Login, s.LoginAllow = loginState(), false
 	if s.LAN {
 		s.LANURLs, s.LANContainer = gateway.LANURLs(), gateway.ContainerAddrs()
 		s.LANContainerHost = gateway.ContainerHostURL()
@@ -1323,10 +1318,6 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		}
 		// and the settings of those the page draws (kernel.js)
 		boot["pluginConfig"] = builtinConfig(list)
-		// on Omarchy the page takes its theme's look before it paints
-		if th, ok := omarchyTheme(); ok {
-			boot["omarchy"] = th
-		}
 		// and the accent and wallpaper of the user's own (appearance.go),
 		// drawn before the first paint
 		boot["look"] = lookKey(s)
@@ -1348,16 +1339,6 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		}
 		rw.Write(out)
 	})
-	// the Omarchy theme as it is now, asked again every few seconds so a
-	// theme picked in Omarchy's menu reaches the page at once; null off Omarchy
-	mux.HandleFunc("GET /api/omarchy", func(rw http.ResponseWriter, r *http.Request) {
-		if th, ok := omarchyTheme(); ok {
-			writeJSON(rw, th)
-			return
-		}
-		writeJSON(rw, nil)
-	})
-	omarchyRoutes(mux, w)
 	fontRoutes(mux, isWeb(w), !fonts.Available, fonts.List)
 	mux.HandleFunc("GET /api/state", func(rw http.ResponseWriter, r *http.Request) {
 		// the panel and its model picker load from here: an account still
@@ -1714,8 +1695,6 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 	uninstallRoutes(mux, w)
 	archiveRoutes(mux)
 	libraryRoutes(mux, w)
-	updateRoutes(mux, w)
-	whatsNewRoutes(mux)
 	cliBehindRoutes(mux)
 	configRepairRoutes(mux, !isWeb(w))
 	gatewayFixRoutes(mux)
@@ -1771,19 +1750,6 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		// the tray menu follows the page's language (#301)
 		if in.Lang != cur.Lang && onLang != nil {
 			onLang()
-		}
-		// an update check that failed, without the proxy set just now, is
-		// tried again through it, not in six hours (#294), and marked so
-		// before this answers: the page stops asking on the old error
-		if strings.TrimSpace(in.Proxy) != strings.TrimSpace(cur.Proxy) && updates.json().State == "error" && updates.begin() {
-			go updates.run()
-		}
-		// another update channel: the feed is asked again on it, so the
-		// version row and the header's Update follow (a download from
-		// every version is dropped on Stable, run), unless automatic
-		// updates are off and nothing was found
-		if in.UpdateChannel != cur.UpdateChannel && (!in.NoAutoUpdate || updates.json().Latest != "") && updates.begin() {
-			go updates.run()
 		}
 		writeJSON(rw, settingsState())
 	})
@@ -1918,11 +1884,6 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		}
 		s := settings.Load()
 		s.UpdateSkip = strings.TrimSpace(in.Version)
-		if s.UpdateSkip != "" {
-			updates.quietAgain() // a dismissal holds for the quiet, not only the next release
-		} else {
-			updates.unhush() // Show again
-		}
 		if err := settings.Save(s); err != nil {
 			fail(rw, err)
 			return
@@ -2813,18 +2774,6 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		}
 		writeJSON(rw, settingsState())
 	})
-	mux.HandleFunc("POST /api/settings/login", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct{ On bool }
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		if err := autostart.Set(in.On); err != nil {
-			fail(rw, err)
-			return
-		}
-		writeJSON(rw, settingsState())
-	})
 	// Sharing controls exposure; the gateway's named caller keys authenticate
 	// remote clients just as they do local ones.
 	mux.HandleFunc("POST /api/settings/lan", func(rw http.ResponseWriter, r *http.Request) {
@@ -3051,49 +3000,6 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 			fail(rw, err)
 			return
 		}
-		if err := settings.Save(s); err != nil {
-			fail(rw, err)
-			return
-		}
-		writeJSON(rw, settingsState())
-	})
-	// a push to the saved Bark target, to see that it arrives
-	mux.HandleFunc("POST /api/bark/test", func(rw http.ResponseWriter, r *http.Request) {
-		s := settings.Load()
-		t := barkTarget(s)
-		if !t.On() {
-			fail(rw, fmt.Errorf("no Bark device key is set"))
-			return
-		}
-		title, body := barkTestText(trayLang(s.Lang, systemLang))
-		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
-		defer cancel()
-		if err := bark.Push(ctx, t, title, body); err != nil {
-			fail(rw, err)
-			return
-		}
-		writeJSON(rw, map[string]bool{"ok": true})
-	})
-	// the GitHub download mirror updates come through (#893), the same
-	// setting `magpie update mirror` sets: a full https:// prefix, or ""
-	// for GitHub itself. The feed and its checksums are never the mirror's.
-	mux.HandleFunc("POST /api/settings/update-mirror", func(rw http.ResponseWriter, r *http.Request) {
-		var in struct {
-			Mirror string `json:"mirror"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			fail(rw, err)
-			return
-		}
-		m := strings.TrimSpace(in.Mirror)
-		if m != "" {
-			if err := update.CheckMirrorURL(m); err != nil {
-				fail(rw, err)
-				return
-			}
-		}
-		s := settings.Load()
-		s.UpdateMirror = m
 		if err := settings.Save(s); err != nil {
 			fail(rw, err)
 			return
@@ -3370,9 +3276,9 @@ func held(h http.Handler) http.Handler {
 			// 5x the CPU.
 			defer tightenGC()()
 		}
-		if !(api && r.Method == http.MethodGet) && r.URL.Path != "/api/update/using" && r.URL.Path != "/api/page-away" {
+		if !(api && r.Method == http.MethodGet) && r.URL.Path != "/api/page-away" {
 			// anything that may have written drops what was held, once it
-			// has answered with it (a page's word of input writes nothing)
+			// has answered with it (a page's word that it went away writes nothing)
 			defer provider.Changed()
 		}
 		h.ServeHTTP(rw, r)
@@ -3446,13 +3352,8 @@ func state() stateJSON {
 		if a.ID == "claude-desktop" && a.WSL == "" {
 			if iso, ok := agent.DesktopIsolatedHere(); ok {
 				aj.Isolated = &iso
-				// while Claude Magpie is on, the row's switch wires it
-				// alone (desktopSets) and the user's own Desktop stays
-				// signed in with Anthropic: the row is Claude Magpie's.
-				// Named Claude Desktop, it read as if their own Desktop
-				// had been connected (xMopf7RF on X, 0.1.4111)
 				if iso.On {
-					aj.Name = desktopiso.Name
+					aj.Name = "Claude Magpie"
 				}
 			}
 		}

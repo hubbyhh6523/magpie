@@ -16,7 +16,6 @@ import (
 
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/netproxy"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
 // An agent pointed at magpie by an address other than this machine's
@@ -367,7 +366,7 @@ func wslMovedFrom(base string) (to, name string) {
 		if d == nil {
 			continue
 		}
-		loopback := wslrun.HostLoopback(d.Net)
+		loopback := wslHostLoopback(d.Net)
 		host := d.host()
 		if !loopback && (host == "" || host == h) {
 			continue

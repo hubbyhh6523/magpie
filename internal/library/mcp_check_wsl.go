@@ -5,47 +5,11 @@ package library
 // another node or none at all (loong on Discord: a server his agents in
 // WSL start fine was checked on Windows, where it "exited (1)"). So the
 // check starts a command where the agents given it start it: on this
-// machine for its own agents, and through wsl.exe (wslrun, as magpie runs
-// a distro's Claude Code) in each distro whose agents have it.
+// machine for its own agents, and in each distro whose agents have it.
+// WSL is gone, so everything is checked here now.
 
-import (
-	"context"
-	"os/exec"
-	"slices"
-	"strings"
-
-	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/wslrun"
-)
-
-// wslCommand starts a check's command in t's distro; a var for tests.
-var wslCommand = func(ctx context.Context, t wslrun.Tool, args ...string) *exec.Cmd {
-	return t.Command(ctx, args...)
-}
-
-// checkSides are where s's command is checked: "" for this machine, a
-// distro's name for its agents there, this machine first. Everything is
-// checked here for a server no agent has, with no WSL to start one in or
-// Settings' Detect agents in WSL off, and for a Windows program (magpie's
-// own image server, the one an agent in WSL is given, which runs on
-// Windows whoever starts it). Nothing here asks WSL anything.
+// checkSides are where s's command is checked: "" for this machine. WSL is
+// gone, so a distro's agents get no check of their own.
 func checkSides(s *Server) []string {
-	here := false
-	var distros []string
-	for _, id := range s.Agents {
-		_, d, ok := strings.Cut(id, "@wsl:")
-		if !ok || d == "" {
-			here = true
-		} else if !slices.Contains(distros, d) {
-			distros = append(distros, d)
-		}
-	}
-	if len(distros) == 0 || !wslrun.On || windowsPath.MatchString(s.Command) || settings.Shared().NoWSLAgents {
-		return []string{""}
-	}
-	slices.Sort(distros)
-	if here {
-		return append([]string{""}, distros...)
-	}
-	return distros
+	return []string{""}
 }

@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/yetone/magpie/internal/appdir"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // A folder on the way to magpie's own that this user can't write — most
@@ -43,13 +43,13 @@ func permissionDenied(err error) bool {
 
 // asAdmin runs a script as root after the system's password prompt; tests
 // stand in for it.
-var asAdmin = update.AsAdmin
+var asAdmin = sysutil.AsAdmin
 
 // mine says whether this user owns a folder; tests stand in for it.
 var mine = appdir.Mine
 
 // errRepairCanceled is the password prompt dismissed.
-var errRepairCanceled = update.ErrCanceled
+var errRepairCanceled = sysutil.ErrCanceled
 
 // repairConfig makes the folder that keeps magpie from saving this user's
 // again, then makes magpie's folders. prompt is whether the system's
@@ -71,7 +71,7 @@ func repairConfig(prompt bool) error {
 			if appdir.Own(b) {
 				recurse = "-R " // magpie's own folder: everything in it is magpie's
 			}
-			q := update.ShellQuote(b)
+			q := sysutil.ShellQuote(b)
 			script := fmt.Sprintf("chown %s%d:%d %s && chmod u+rwx %s", recurse, os.Getuid(), os.Getgid(), q, q)
 			if !prompt || !canElevate() {
 				return fmt.Errorf("%s belongs to another user, and no administrator prompt can be shown here: run `sudo %s` in a terminal", b, script)

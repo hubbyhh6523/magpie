@@ -62,40 +62,6 @@ func TestBrowserGIFFramesHoldWhatChanged(t *testing.T) {
 	}
 }
 
-// A recording's MP4 has a frame an action, held a second, the last three,
-// every frame the first one's size, its index before its pictures.
-func TestBrowserMP4(t *testing.T) {
-	frames := [][]byte{
-		recJPEG(t, 400, 301, image.Rectangle{}),
-		recJPEG(t, 400, 301, image.Rect(100, 100, 160, 140)),
-		recJPEG(t, 400, 301, image.Rect(100, 100, 160, 140)),
-		recJPEG(t, 800, 600, image.Rectangle{}), // a resized window
-	}
-	data, err := browserMP4(frames)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(data[4:8]) != "ftyp" || bytes.Index(data, []byte("moov")) > bytes.Index(data, []byte("mdat")) {
-		t.Fatalf("starts %q: not ftyp, moov, mdat", data[:16])
-	}
-	i := bytes.Index(data, []byte("stts"))
-	if i < 0 {
-		t.Fatal("no stts")
-	}
-	// version/flags, 2 runs: 3 a second, 1 three seconds
-	want := []byte{0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0x03, 0xe8, 0, 0, 0, 1, 0, 0, 0x0b, 0xb8}
-	if got := data[i+4 : i+4+len(want)]; !bytes.Equal(got, want) {
-		t.Fatalf("stts % x", got)
-	}
-	i = bytes.Index(data, []byte("stsd")) + bytes.Index(data[bytes.Index(data, []byte("stsd")):], []byte("avc1"))
-	if w, h := int(data[i+28])<<8|int(data[i+29]), int(data[i+30])<<8|int(data[i+31]); w != 400 || h != 302 {
-		t.Fatalf("avc1 %dx%d, want 400x302 (cropped to 301)", w, h)
-	}
-	if _, err := browserMP4(nil); err == nil {
-		t.Fatal("no frames made an MP4")
-	}
-}
-
 // A frame's label says what was done to what, never what was typed.
 func TestBrowserRecSayKeepsTypedTextOut(t *testing.T) {
 	got := browserRecSay(3, "type", map[string]any{"ref": "e4", "text": "hunter2", "action": "type"})

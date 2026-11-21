@@ -27,7 +27,7 @@ import (
 	"github.com/yetone/magpie/internal/lastgood"
 	"github.com/yetone/magpie/internal/settings"
 	"github.com/yetone/magpie/internal/steady"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // Updates is what magpie's last look at npm found for the plugins.
@@ -142,7 +142,7 @@ func waitsNoMore(have map[string]Entry) func(Waiting) bool {
 		if ok && w.Git {
 			return e.Off || e.Spec != w.Spec || !GitBehind(e.Spec, w.Latest) || !SameCommit(GitCommit(e.Spec), w.Version)
 		}
-		return !ok || e.Off || !update.Newer(w.Latest, Installed(e.Spec))
+		return !ok || e.Off || !sysutil.Newer(w.Latest, Installed(e.Spec))
 	}
 }
 
@@ -237,7 +237,7 @@ func CheckUpdates(ctx context.Context) (Updates, error) {
 	}
 	for _, e := range es {
 		pkg, have, now := Name(e.Spec), Installed(e.Spec), latest[Name(e.Spec)]
-		if e.Off || have == "" || now == "" || !update.Newer(now, have) {
+		if e.Off || have == "" || now == "" || !sysutil.Newer(now, have) {
 			continue
 		}
 		if !Official(pkg) || Pinned(e.Spec) {
@@ -459,7 +459,7 @@ func CheckNow(ctx context.Context) VersionChecks {
 				return
 			}
 			c.Latest, c.Status = info.Version, "current"
-			if c.Version != "" && update.Newer(info.Version, c.Version) {
+			if c.Version != "" && sysutil.Newer(info.Version, c.Version) {
 				c.Status = "update"
 			}
 		}(&out[i])

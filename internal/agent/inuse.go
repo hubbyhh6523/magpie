@@ -10,7 +10,7 @@ import (
 
 // Models are magpie's models the agent is set to, as catalog ids
 // (provider/model, group/<id>), each once: the agent's own models aside.
-// Usage stats count them (internal/stats).
+// Usage stats count them.
 func (a *Agent) Models() []string {
 	var out []string
 	add := func(r string) {

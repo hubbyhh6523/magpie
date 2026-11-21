@@ -26,7 +26,7 @@ var keySlotFree = []string{
 	"POST /api/show", "POST /v1/magpie/usage/requests", "POST " + provider.RemoteRefreshPath,
 	"POST " + provider.RemoteCodexResetPath, "POST " + StatuslinePath, "POST " + KeysPath,
 	"DELETE " + KeysPath + "/{id}", "POST " + OIDCKeysPath, "POST " + provider.RemoteProvePath,
-	"POST " + RestartPath, "POST " + provider.RemoteUpdatePath, "POST /v1/messages/count_tokens",
+	"POST /v1/messages/count_tokens",
 	"POST " + claudeMCPPath + "{token}", "/mcp/{name}", "/mcp/run/{name}", SearchMCPPath, VisionMCPPath,
 	ImageMCPPath, BrowserMCPPath, MemoryMCPPath, SessionsMCPPath, ImageMCPFiles + "{name}", ToolsMCPPath, ToolsMCPOne + "{plugin}",
 	HubMCPPath + "{agent}", HubMCPAll, "/", "POST " + joinData, AdminPath,

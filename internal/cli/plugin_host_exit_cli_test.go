@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/plugin"
+	"github.com/yetone/magpie/internal/sysutil"
 	"github.com/yetone/magpie/internal/testenv"
-	"github.com/yetone/magpie/internal/update"
 )
 
 // A command that does its work and ends starts no plugin host: magpie
@@ -166,10 +166,10 @@ func TestExitEndsPluginHosts(t *testing.T) {
 			// ended and waited for before magpie exits; the room is for a
 			// slow process table, not for the host
 			deadline := time.Now().Add(10 * time.Second)
-			for update.Alive(pid) && time.Now().Before(deadline) {
+			for sysutil.Alive(pid) && time.Now().Before(deadline) {
 				time.Sleep(50 * time.Millisecond)
 			}
-			if update.Alive(pid) {
+			if sysutil.Alive(pid) {
 				if p, err := os.FindProcess(pid); err == nil {
 					_ = p.Kill()
 				}

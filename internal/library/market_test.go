@@ -325,37 +325,6 @@ func TestInstallFromRegistry(t *testing.T) {
 	}
 }
 
-func TestMagpieImageIsOptIn(t *testing.T) {
-	sandbox(t)
-	ok(t)(InstallServer("magpie-image", nil, nil))
-	list, err := MarketServers("")
-	if err != nil {
-		t.Fatal(err)
-	}
-	i := slices.IndexFunc(list, func(m MarketServer) bool { return m.ID == "magpie-image" })
-	if i < 0 || !list[i].OptIn || list[i].Have != "magpie-image" {
-		t.Fatalf("market: %+v", list)
-	}
-	l, err := load()
-	if err != nil {
-		t.Fatal(err)
-	}
-	s := l.server("magpie-image")
-	if s == nil || len(s.Agents) != 0 || !filepath.IsAbs(s.Command) || strings.Join(s.Args, " ") != "mcp image" {
-		t.Fatalf("added as %+v", s)
-	}
-}
-
-// Magpie Image's card doesn't say videos need a Grok subscription: the
-// gateway also makes them with Seedance, another magpie and a provider whose
-// model list marks video models (#1399).
-func TestMagpieImageSaysVideoModels(t *testing.T) {
-	d := selfServer().Description
-	if strings.Contains(d, "Grok subscription") || !strings.Contains(d, "video model set up in Magpie") {
-		t.Fatalf("description %q", d)
-	}
-}
-
 // A skill taken in from an agent's folder has no GitHub source, and adding
 // it from the market is turned away by its name; the market says it's had
 // by the same name (#444).
@@ -375,6 +344,15 @@ func TestMarketSkillHadByName(t *testing.T) {
 			t.Errorf("haveSkill(%s, %s) = %q, want %q", c.source, c.id, got, c.want)
 		}
 	}
+}
+
+func valueOf(o ordered, k string) (any, bool) {
+	for _, e := range o {
+		if e.k == k {
+			return e.v, true
+		}
+	}
+	return nil, false
 }
 
 // Magpie Browser is magpie's own too, `magpie mcp browser`, given only to
@@ -446,7 +424,7 @@ func TestMagpieImageRecognitionIsOptIn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, id := range []string{selfServerName, searchServerName, visionServerName} {
+	for _, id := range []string{searchServerName, visionServerName} {
 		if !slices.ContainsFunc(list, func(m MarketServer) bool { return m.ID == id && m.OptIn }) {
 			t.Fatalf("%s not in Discover: %+v", id, list)
 		}

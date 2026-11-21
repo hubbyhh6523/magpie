@@ -7,7 +7,7 @@ package library
 // administrator for it: an elevated magpie would write the agents' files
 // as the administrator, and couldn't start with Windows without asking each
 // time. Instead the one winget command that needs it goes through Windows'
-// administrator prompt (update.RunElevated), as an agent's npm update in
+// administrator prompt (sysutil.RunElevated), as an agent's npm update in
 // Program Files does; a prompt declined or not to be had says so, and what
 // to do, as agent.AdminError.
 
@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/agent"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // wingetNeedsAdmin is winget saying the command needs an administrator
@@ -30,9 +30,9 @@ const wingetNeedsAdmin uint32 = 0x8A150019
 var (
 	// rtkElevates is whether an installer can be run through an
 	// administrator prompt here (Windows); vars so tests can on any system
-	rtkElevates = update.CanRunElevated()
-	runElevated = update.RunElevated
-	rtkWritable = update.Writable
+	rtkElevates = sysutil.CanRunElevated()
+	runElevated = sysutil.RunElevated
+	rtkWritable = sysutil.Writable
 	// runPlain is runInstaller: winget's HRESULTs are past what a test's
 	// sh can exit with
 	runPlain = runInstaller
@@ -70,12 +70,12 @@ func runRTKInstaller(c []string, timeout time.Duration, admin string, env ...str
 	defer cancel()
 	b, err := runElevated(ctx, home(), append(append(os.Environ(), "NONINTERACTIVE=1"), env...), c...)
 	out := string(b)
-	var ee *update.ExitError
+	var ee *sysutil.ExitError
 	switch {
 	case err == nil:
 		return out, nil
-	case errors.Is(err, update.ErrCanceled) || errors.Is(err, update.ErrNoAdmin):
-		return out, &agent.AdminError{Agent: "RTK", Prefix: admin, Command: shown(c), Via: "winget", Canceled: errors.Is(err, update.ErrCanceled), Err: err}
+	case errors.Is(err, sysutil.ErrCanceled) || errors.Is(err, sysutil.ErrNoAdmin):
+		return out, &agent.AdminError{Agent: "RTK", Prefix: admin, Command: shown(c), Via: "winget", Canceled: errors.Is(err, sysutil.ErrCanceled), Err: err}
 	case errors.Is(ctx.Err(), context.DeadlineExceeded):
 		return out, installFailed(c, out, -1, fmt.Errorf("didn't finish in %s", timeout))
 	case errors.As(err, &ee):

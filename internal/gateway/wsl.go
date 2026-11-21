@@ -19,7 +19,6 @@ import (
 
 	"github.com/yetone/magpie/internal/edit"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
 // A WSL distro in NAT networking (WSL's default) reaches Windows at the
@@ -37,11 +36,10 @@ import (
 // of Docker Desktop's, which shares that network, has no key.
 
 // WSLNets are the networks Windows has an address on that WSL distros reach
-// it through (wslrun.Nets): the vEthernet (WSL…) adapters', NAT's and a
-// bridged switch's. None off Windows. A var for the tests.
+// it through. WSL is gone, so there are none. A var for the tests.
 var WSLNets = wslNets
 
-func wslNets() []*net.IPNet { return wslrun.Nets() }
+func wslNets() []*net.IPNet { return nil }
 
 // OnWSLNet says base (an agent's gateway URL) names an address Windows has
 // on a WSL network: where a distro under NAT reaches the gateway.
@@ -77,34 +75,19 @@ func OnWSLNet(base string) bool {
 // from Windows' own address or a WSL network, with the WSL key, is this
 // computer's, as on the WSL network (fromWSL).
 
-// WSLVia are the WSL vias (wslrun.Via), and wslTrying those being tried.
-// None off Windows unless the tests serve WSL there. Vars for the tests.
-var WSLVia = func() []net.IP {
-	if runtime.GOOS != "windows" && !wslServeEverywhere {
-		return nil
-	}
-	v, _ := wslrun.Via()
-	return v
-}
+// WSLVia are the WSL vias, and wslTrying those being tried. WSL is gone,
+// so there are none. Vars for the tests.
+var WSLVia = func() []net.IP { return nil }
 
-var wslTrying = func() []net.IP {
-	if runtime.GOOS != "windows" && !wslServeEverywhere {
-		return nil
-	}
-	_, t := wslrun.Via()
-	return t
-}
+var wslTrying = func() []net.IP { return nil }
 
 // wslViaAll are the vias and those being tried: where the gateway listens.
 func wslViaAll() []net.IP { return append(slices.Clone(WSLVia()), wslTrying()...) }
 
-// SetWSLVia makes via the WSL vias and trying those tried
-// (wslrun.SetVia); the gateway listens at them within wslWatch, at once in
-// this process.
+// SetWSLVia makes via the WSL vias and trying those tried; the gateway
+// listens at them within wslWatch, at once in this process. WSL is gone,
+// so it only asks serveWSL to look again (and finds nothing).
 func SetWSLVia(via, trying []string) error {
-	if err := wslrun.SetVia(via, trying); err != nil {
-		return err
-	}
 	select {
 	case wslLook <- struct{}{}:
 	default:

@@ -12,7 +12,6 @@ import (
 
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/testenv"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
 // claudeRootRefusal is what Claude Code 2.1.296 prints, and exits 1 on,
@@ -129,25 +128,4 @@ func TestClaudeAsRootEnv(t *testing.T) {
 		}
 	}
 
-	// a WSL distro's user decides, not magpie's on Windows; and IS_SANDBOX
-	// goes into the distro only for root
-	claudeEuid = func() int { return 1000 }
-	wslenv := func(env []string) string {
-		for _, e := range env {
-			if v, ok := strings.CutPrefix(e, "WSLENV="); ok {
-				return v
-			}
-		}
-		return ""
-	}
-	root := claudeCLI{wsl: &wslrun.Tool{Path: "/usr/bin/claude", Root: true}}
-	env := root.env(root.asRoot(slices.Clone(base)), "")
-	if !slices.Contains(env, "IS_SANDBOX=1") || !slices.Contains(strings.Split(wslenv(env), ":"), "IS_SANDBOX") {
-		t.Fatalf("WSL as root: %q", env)
-	}
-	user := claudeCLI{wsl: &wslrun.Tool{Path: "/usr/bin/claude"}}
-	env = user.env(user.asRoot(append(slices.Clone(base), "IS_SANDBOX=x")), "")
-	if slices.Contains(env, "IS_SANDBOX=1") || slices.Contains(strings.Split(wslenv(env), ":"), "IS_SANDBOX") {
-		t.Fatalf("WSL as a user: %q", env)
-	}
 }

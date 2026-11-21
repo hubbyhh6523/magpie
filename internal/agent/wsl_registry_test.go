@@ -11,27 +11,18 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/proc"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
-// wslRealRuns has WSL on and agent's and wslrun's real wsl.exe runners
-// (testenv's failing stand-in on PATH) wrapped to note each run's arguments and
+// wslRealRuns has WSL on and agent's real wsl.exe runner (testenv's
+// failing stand-in on PATH) wrapped to note each run's arguments and
 // error; what magpie remembers of WSL starts empty.
 func wslRealRuns(t *testing.T) (runs func() map[string][]error) {
 	t.Helper()
 	syncHome(t)
-	on, run, ron, rrun := wslOn, wslRun, wslrun.On, wslrun.Run
+	on, run := wslOn, wslRun
 	var mu sync.Mutex
 	got := map[string][]error{}
-	wslOn, wslrun.On = true, true
-	wslrun.Run = func(d time.Duration, args ...string) ([]byte, error) {
-		out, err := rrun(d, args...)
-		mu.Lock()
-		k := "wslrun " + strings.Join(args, " ")
-		got[k] = append(got[k], err)
-		mu.Unlock()
-		return out, err
-	}
+	wslOn = true
 	wslRun = func(d time.Duration, args ...string) ([]byte, error) {
 		out, err := run(d, args...)
 		mu.Lock()
@@ -46,7 +37,7 @@ func wslRealRuns(t *testing.T) (runs func() map[string][]error) {
 		wsl.Unlock()
 	}
 	reset()
-	t.Cleanup(func() { wslOn, wslRun, wslrun.On, wslrun.Run = on, run, ron, rrun; wslrun.Forget(); reset() })
+	t.Cleanup(func() { wslOn, wslRun = on, run; reset() })
 	return func() map[string][]error {
 		mu.Lock()
 		defer mu.Unlock()
@@ -89,10 +80,6 @@ func TestNoWSLDistroRunsNoWSL(t *testing.T) {
 	wslExec("Ubuntu", "true")
 	if _, ok := wslReach("Ubuntu", "http://127.0.0.1:3425"); ok {
 		t.Fatal("reached into a distro with none registered")
-	}
-	wslrun.Forget()
-	if wslrun.Up("Ubuntu") {
-		t.Fatal("wslrun: a distro runs with none registered")
 	}
 	got := runs()
 	if len(got) == 0 {

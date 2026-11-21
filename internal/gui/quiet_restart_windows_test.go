@@ -25,7 +25,7 @@ import (
 
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // aquaarboraurum on X: the window a restart to update brings back is
@@ -353,7 +353,7 @@ func restartDrawOld(mode string, report func(string, ...any)) {
 // restartDrawNew is the version restarted into: it starts as the app does
 // and says what its window shows.
 func restartDrawNew(mode string, report func(string, ...any), end func(bool)) {
-	update.AwaitPredecessor()
+	sysutil.AwaitPredecessor()
 	webView2Ready(webView2Dir(), "restart-draw", 30*time.Second)
 	quiet, minimised := takeQuietRestart()
 	if quiet != strings.HasPrefix(mode, "quiet") || minimised != strings.Contains(mode, "-min") {

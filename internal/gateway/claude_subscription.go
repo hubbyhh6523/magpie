@@ -48,7 +48,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -73,7 +72,6 @@ import (
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
 type subscriptionBridge struct {
@@ -756,30 +754,21 @@ func randomToken() string {
 	return hex.EncodeToString(b[:])
 }
 
-// claudeCLI is the Claude Code magpie runs: this machine's, or, on Windows
-// without one, the one installed in a running WSL distro, run there with
-// its own login and quota (wslrun).
+// claudeCLI is the Claude Code magpie runs: this machine's.
 type claudeCLI struct {
 	path string
-	wsl  *wslrun.Tool
 }
 
 // claudeBinary is this machine's Claude Code, or the one magpie downloaded
-// for it (claudecode.Find), else one in WSL.
+// for it (claudecode.Find).
 func claudeBinary() (claudeCLI, error) {
 	if p := claudecode.Find(); p != "" {
 		return claudeCLI{path: p}, nil
-	}
-	if t, ok := wslrun.Find("claude"); ok {
-		return claudeCLI{wsl: &t}, nil
 	}
 	return claudeCLI{}, errors.New("Claude Code is not installed; install it and run `claude auth login`, " + claudecode.InstallHint)
 }
 
 func (c claudeCLI) command(ctx context.Context, args ...string) *exec.Cmd {
-	if c.wsl != nil {
-		return c.wsl.Command(ctx, args...)
-	}
 	return proc.CommandContext(ctx, c.path, args...)
 }
 
@@ -787,11 +776,8 @@ func (c claudeCLI) command(ctx context.Context, args ...string) *exec.Cmd {
 var claudeEuid = os.Geteuid
 
 // root is whether this Claude Code runs as root: magpie itself as root
-// (a server's or a container's), or a WSL distro's default user root.
+// (a server's or a container's).
 func (c claudeCLI) root() bool {
-	if c.wsl != nil {
-		return c.wsl.Root
-	}
 	return runtime.GOOS != "windows" && claudeEuid() == 0
 }
 
@@ -823,88 +809,31 @@ func (c claudeCLI) asRoot(env []string) []string {
 	return append(out, "IS_SANDBOX=1")
 }
 
-// claudeEnvVars are the variables magpie sets for a Claude Code run, which
-// one in WSL is handed (wslrun's Env).
+// claudeEnvVars are the variables magpie sets for a Claude Code run.
 var claudeEnvVars = []string{"ENABLE_CLAUDEAI_MCP_SERVERS", "DISABLE_AUTO_COMPACT", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
 	"DISABLE_TELEMETRY", "DO_NOT_TRACK", "DISABLE_ERROR_REPORTING", "DISABLE_AUTOUPDATER", "ANTHROPIC_BETAS",
 	"CLAUDE_CODE_EXTRA_BODY", "DISABLE_PROMPT_CACHING", "CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS", "CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT"}
 
 // env is env for a run in config directory configDir ("" for the account
-// Claude Code is signed in to): for one in WSL, what of it goes in.
+// Claude Code is signed in to).
 func (c claudeCLI) env(env []string, configDir string) []string {
-	env = inClaudeDir(env, configDir)
-	if c.wsl == nil {
-		return env
-	}
-	names := claudeEnvVars
-	if configDir != "" {
-		names = append(slices.Clone(names), "CLAUDE_CONFIG_DIR/p")
-	}
-	if slices.ContainsFunc(env, func(e string) bool { return strings.HasPrefix(e, "CLAUDE_CODE_OAUTH_TOKEN=") }) {
-		names = append(slices.Clone(names), "CLAUDE_CODE_OAUTH_TOKEN")
-	}
-	if c.wsl.Root {
-		// asRoot's, for a distro whose user is root
-		names = append(slices.Clone(names), "IS_SANDBOX")
-	}
-	return c.wsl.Env(env, names...)
+	return inClaudeDir(env, configDir)
 }
 
 // proxied is env told the proxy a run for ctx goes through (claudeProxy),
 // a SOCKS one bridged: Claude Code is built with Bun, which takes only
-// http:// and https:// proxies (#2651). One in a WSL distro reaches the
-// bridge only when the distro shares Windows' loopback.
+// http:// and https:// proxies (#2651).
 func (c claudeCLI) proxied(ctx context.Context, env []string) ([]string, error) {
-	return netproxy.EnvForBunWith(claudeProxy(ctx), env, c.wsl == nil || c.wsl.Host == "")
+	return netproxy.EnvForBunWith(claudeProxy(ctx), env, true)
 }
 
-// file is where this Claude Code reads a file of magpie's at path: one in
-// WSL under the distro's mount of the drive.
+// file is where this Claude Code reads a file of magpie's at path.
 func (c claudeCLI) file(path string) string {
-	if c.wsl != nil {
-		return c.wsl.Linux(path)
-	}
 	return path
-}
-
-// tuiWSL is how the interactive mode's helper runs this Claude Code, one
-// in WSL, in config directory configDir (claudetui.WSL), as JSON: its
-// transcripts read from Windows, through \\wsl$ for the distro's own
-// folder.
-func (c claudeCLI) tuiWSL(configDir string) string {
-	w := claudetui.WSL{Args: c.wsl.Args(), Mount: c.wsl.Mount, Projects: filepath.Join(configDir, "projects")}
-	if configDir == "" {
-		w.Projects = c.wsl.Windows(path.Join(c.wsl.Home, ".claude", "projects"))
-		if c.tuiWSLUnread() {
-			// the helper reads the transcript inside the distro
-			w.Projects, w.Distro = "", c.wsl.Distro
-		}
-	}
-	b, _ := json.Marshal(w)
-	return string(b)
-}
-
-// wslStat is os.Stat; a var for tests.
-var wslStat = os.Stat
-
-// tuiWSLUnread is whether Windows can't read the transcripts of this
-// Claude Code in WSL in its own folder: the probe didn't find the distro
-// user's home, or Windows can't read it through \\wsl$, which a session
-// with no 9P redirector (one over ssh) has none of. An account's folder
-// is a Windows one.
-func (c claudeCLI) tuiWSLUnread() bool {
-	if c.wsl.Home == "" {
-		return true
-	}
-	_, err := wslStat(c.wsl.Windows(c.wsl.Home))
-	return err != nil
 }
 
 // exe is magpie's own executable, as this Claude Code starts it.
 func (c claudeCLI) exe() (string, error) {
-	if c.wsl != nil {
-		return c.wsl.Exe()
-	}
 	return os.Executable()
 }
 
@@ -1078,12 +1007,9 @@ func (b *subscriptionBridge) startRun(ctx context.Context, req *Request, model, 
 	// here (clientWorkDir): Claude Code tells the model the folder it runs
 	// in as its working directory, and a model told magpie's folder wrote
 	// the caller's files there, through tools that run in the caller's
-	work := ""
-	if binary.wsl == nil {
-		work = clientWorkDir(req)
-		if work != "" && b.untrustedHere(req, binary, configDir, work) {
-			work = ""
-		}
+	work := clientWorkDir(req)
+	if work != "" && b.untrustedHere(req, binary, configDir, work) {
+		work = ""
 	}
 	client := work != ""
 	if !client {
@@ -1118,7 +1044,7 @@ func (b *subscriptionBridge) startRun(ctx context.Context, req *Request, model, 
 		// read from the cache as far as Claude Code's own part
 		log.Printf("claude: working in a folder of the run's own: %v", err)
 		work = tmp
-	case binary.wsl == nil:
+	default:
 		// its session is kept on disk, for a turn after it is let go to
 		// go on with it (claudeSessions)
 		sessions = claudeSessions(configDir, work)
@@ -1627,7 +1553,7 @@ func claudeMachineWhy(binary claudeCLI) (code, why string) {
 	}{
 		{!claudeTUIRuns, "no-shim", "no shim"},
 		{runtime.GOOS != "darwin" && runtime.GOOS != "linux" && runtime.GOOS != "windows", "os", runtime.GOOS},
-		{binary.wsl == nil && binary.path == "", "missing", "no Claude Code path"},
+		{binary.path == "", "missing", "no Claude Code path"},
 		{settings.Shared().ClaudePrintMode, "off", "the interactive mode is turned off"},
 	} {
 		if c.is {
@@ -1677,7 +1603,7 @@ func ClaudeModeNow() ClaudeMode {
 	m := ClaudeMode{Why: "missing"}
 	if binary, err := claudeBinary(); err == nil {
 		code, _ := claudeMachineWhy(binary)
-		m = ClaudeMode{TUI: code == "", Why: code, WSL: binary.wsl != nil}
+		m = ClaudeMode{TUI: code == "", Why: code}
 	}
 	claudeLast.Lock()
 	if !claudeLast.run.At.IsZero() {
@@ -1910,21 +1836,12 @@ func (c claudeCLI) tuiCommand(ctx context.Context, args ...string) (*exec.Cmd, e
 	if claudeTUIHelper != "" {
 		helper = claudeTUIHelper
 	}
-	// Claude Code in WSL is run through wsl.exe, its arguments in
-	// claudetui.WSLEnv
 	claude := c.path
-	if c.wsl != nil {
-		claude = "wsl.exe"
-	}
 	return proc.CommandContext(ctx, helper, append([]string{claudetui.Command, claude}, args...)...), nil
 }
 
-// tuiEnv is env with what the helper is told: how to run Claude Code in
-// WSL.
+// tuiEnv is env with what the helper is told.
 func (c claudeCLI) tuiEnv(env []string, configDir string) []string {
-	if c.wsl != nil {
-		env = append(env, claudetui.WSLEnv+"="+c.tuiWSL(configDir))
-	}
 	return env
 }
 

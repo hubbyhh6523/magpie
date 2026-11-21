@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/yetone/magpie/internal/desktopdir"
-	"github.com/yetone/magpie/internal/desktopiso"
 	"github.com/yetone/magpie/internal/edit"
 )
 
@@ -26,9 +25,9 @@ func isolatedSandbox(t *testing.T) (string, desktopPaths, desktopPaths, *bool) {
 }
 
 // isolatedFakes holds the isolated Desktop's choices in the test, its
-// Claude Code folder's too, and stubs the app: made as magpie would make
-// it (desktopiso.Here finds it), with the Claude Code folder it was last
-// made with in *made. desktopdir.OS is darwin.
+// Claude Code folder's too, and stubs the app: made as magpie used to make
+// it, with the Claude Code folder it was last made with in *made.
+// desktopdir.OS is darwin.
 func isolatedFakes(t *testing.T, home string) (desktopPaths, desktopPaths, *bool, *[]string) {
 	t.Helper()
 	usual := desktopUsualSets("darwin", home, os.Getenv)[0]
@@ -52,11 +51,11 @@ func isolatedFakes(t *testing.T, home string) (desktopPaths, desktopPaths, *bool
 			t.Errorf("app made for %q on %q", app, dir)
 		}
 		made = append(made, claudeDir)
-		p := desktopiso.Path(home)
+		p := filepath.Join(home, "Applications", "Claude Magpie.app")
 		if err := os.MkdirAll(filepath.Join(p, "Contents"), 0o755); err != nil {
 			return "", err
 		}
-		return p, os.WriteFile(filepath.Join(p, "Contents", "Info.plist"), []byte("<key>CFBundleIdentifier</key><string>"+desktopiso.BundleID+"</string>"), 0o644)
+		return p, os.WriteFile(filepath.Join(p, "Contents", "Info.plist"), []byte("<key>CFBundleIdentifier</key><string>ai.usemagpie.claude-desktop</string>"), 0o644)
 	}
 	t.Cleanup(func() {
 		desktopIsolatedOn, saveDesktopIsolated, desktopClaudeApp, desktopIsoAdd = oldOn, oldSave, oldApp, oldAdd

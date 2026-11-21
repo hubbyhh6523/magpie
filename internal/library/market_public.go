@@ -6,7 +6,7 @@ import "slices"
 // ships with magpie (the featured ones and the registry's popular ones),
 // each by its market id, given to at least one agent: what the day's
 // report names of the user's MCP servers, for the market's counts of who
-// uses each (internal/stats). A server of the user's own, one found only
+// uses each. A server of the user's own, one found only
 // by a search of the registry, and one no agent is given are never in it,
 // nor is anything of a server but its id: no name, URL, command or key.
 func PublicServers() []string {

@@ -21,13 +21,11 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/yetone/magpie/internal/claudecode"
 	"github.com/yetone/magpie/internal/netproxy"
 	"github.com/yetone/magpie/internal/proc"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
 // claudeCLISignIn is a `claude auth login` magpie is running.
@@ -74,74 +72,42 @@ func claudeSignInEnv(env []string, dir string) []string {
 	return append(out, "CLAUDE_CONFIG_DIR="+dir)
 }
 
-// claudeCLI is the Claude Code a sign-in runs: this machine's, or, on
-// Windows without one, the one installed in a running WSL distro, which
-// signs in to the config directory magpie gives it all the same (wslrun).
+// claudeCLI is the Claude Code a sign-in runs: this machine's.
 type claudeCLI struct {
 	path string
-	wsl  *wslrun.Tool
 }
 
 func findClaudeCLI() (claudeCLI, bool) {
 	if p := claudeExecutable(); p != "" {
 		return claudeCLI{path: p}, true
 	}
-	if t, ok := wslrun.Find("claude"); ok {
-		return claudeCLI{wsl: &t}, true
-	}
 	return claudeCLI{}, false
 }
 
-// ClaudeInWSL is the WSL distro the gateway runs Claude Code in, when there
-// is none on Windows itself and one was found there; "" otherwise. It never
-// waits on WSL: until a look has been made, one starts and "" comes back.
+// ClaudeInWSL is the WSL distro the gateway runs Claude Code in. WSL is
+// gone, so it is always "".
 func ClaudeInWSL() string {
-	if !wslrun.On || claudeExecutable() != "" {
-		return ""
-	}
-	if t, ok := wslrun.Known("claude"); ok {
-		return t.Distro
-	}
-	if lookingInWSL.CompareAndSwap(false, true) {
-		go func() {
-			defer lookingInWSL.Store(false)
-			wslrun.Find("claude")
-		}()
-	}
 	return ""
 }
 
-var lookingInWSL atomic.Bool
-
 func (c claudeCLI) command(ctx context.Context, args ...string) *exec.Cmd {
-	if c.wsl != nil {
-		return c.wsl.Command(ctx, args...)
-	}
 	return proc.CommandContext(ctx, c.path, args...)
 }
 
 func (c claudeCLI) probe(ctx context.Context, args ...string) *exec.Cmd {
-	if c.wsl != nil {
-		return c.wsl.Probe(ctx, args...)
-	}
 	return proc.ProbeContext(ctx, c.path, args...)
 }
 
-// env is env for a sign-in's Claude Code: for one in WSL, what of it goes
-// in, its config directory and browser told by their paths there.
+// env is env for a sign-in's Claude Code.
 func (c claudeCLI) env(env []string) []string {
-	if c.wsl == nil {
-		return env
-	}
-	return c.wsl.Env(env, "CLAUDE_CONFIG_DIR/p", "BROWSER/p", openedURLEnv+"/p")
+	return env
 }
 
 // proxied is env told the proxy choice names (netproxy.With), a SOCKS
 // one bridged: Claude Code is built with Bun, which takes only http:// and
-// https:// proxies (#2651). One in a WSL distro reaches the bridge only
-// when the distro shares Windows' loopback.
+// https:// proxies (#2651).
 func (c claudeCLI) proxied(choice string, env []string) ([]string, error) {
-	return netproxy.EnvForBunWith(choice, env, c.wsl == nil || c.wsl.Host == "")
+	return netproxy.EnvForBunWith(choice, env, true)
 }
 
 // startClaudeSignIn runs `claude auth login` and gives the window the page
@@ -453,9 +419,7 @@ func claudeTooOld(cli claudeCLI, said []string) string {
 		return ""
 	}
 	which := "Claude Code"
-	if cli.wsl != nil {
-		which += " in WSL (" + cli.wsl.Distro + ")"
-	} else if cli.path != "" {
+	if cli.path != "" {
 		if v := claudecode.VersionOf(cli.path); v != "" {
 			which += " " + v
 		}

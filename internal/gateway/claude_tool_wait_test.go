@@ -68,13 +68,12 @@ func TestClaudeRunWaitsOnToolCalls(t *testing.T) {
 	}
 }
 
-// A run in WSL is handed the same variables: claudeEnvVars names them for
-// wslrun's Env.
-func TestClaudeToolWaitVarsReachWSL(t *testing.T) {
+// A run is handed the same variables: claudeEnvVars names them.
+func TestClaudeToolWaitVarsAreSet(t *testing.T) {
 	for _, kv := range claudeToolWaitVars {
 		k, _, _ := strings.Cut(kv, "=")
 		if !slices.Contains(claudeEnvVars, k) {
-			t.Fatalf("%s isn't in claudeEnvVars, so a run in WSL waits on its calls 120s at most", k)
+			t.Fatalf("%s isn't in claudeEnvVars, so a run waits on its calls 120s at most", k)
 		}
 	}
 }

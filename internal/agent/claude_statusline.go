@@ -24,13 +24,13 @@ import (
 	"strings"
 
 	"github.com/yetone/magpie/internal/edit"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // claudeStatusExe is the magpie a status line written now runs; a var for
 // tests.
 var claudeStatusExe = func() string {
-	if exe, err := update.Program(); err == nil && exe != "" {
+	if exe, err := sysutil.Program(); err == nil && exe != "" {
 		return exe
 	}
 	return "magpie"

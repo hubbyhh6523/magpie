@@ -20,7 +20,7 @@ import (
 
 	"github.com/yetone/magpie/internal/lazyre"
 	"github.com/yetone/magpie/internal/source"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // The community repo's dist branch: every version of each
@@ -247,7 +247,7 @@ func mergeDist(a, b *distIndex) *distIndex {
 			vs[v] = x
 		}
 		p := pa
-		if update.Newer(pb.Latest, pa.Latest) {
+		if sysutil.Newer(pb.Latest, pa.Latest) {
 			p.Latest, p.Readme = pb.Latest, pb.Readme
 		}
 		p.Versions = vs

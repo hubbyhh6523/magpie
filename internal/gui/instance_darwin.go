@@ -7,7 +7,7 @@ import (
 
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // runningAlready is whether another magpie, this same one on this config,
@@ -48,7 +48,7 @@ func runningAlready(showMain bool, link string) bool {
 		os.Chtimes(stamp, time.Now(), time.Now())
 		// by its bundle id: the magpie running may be another copy of the
 		// app, which opening this one's path wouldn't reach
-		if update.Bundle() != "" {
+		if sysutil.Bundle() != "" {
 			proc.Command("open", "-b", "com.yetone.magpie").Run()
 		}
 	}

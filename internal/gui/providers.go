@@ -19,14 +19,13 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/agent"
-	"github.com/yetone/magpie/internal/autostart"
 	"github.com/yetone/magpie/internal/catalog"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/library"
 	"github.com/yetone/magpie/internal/plugin"
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 	"github.com/yetone/magpie/internal/upstream"
 	"github.com/yetone/magpie/internal/usage"
 )
@@ -428,9 +427,6 @@ type providerJSON struct {
 	// ConnectAgents: a Remote magpie whose connected agents are
 	// connected here too, those installed here (agent.ConnectsAgents)
 	ConnectAgents bool `json:"connectAgents,omitempty"`
-	// RemoteUpdate: a Remote magpie's word on its last ask to follow
-	// this magpie's version (remoteUpdateNote)
-	RemoteUpdate *remoteUpdateJSON `json:"remoteUpdate,omitempty"`
 	// CapStop and CapCareful: how its accounts end at their caps
 	// (plugins#349), set on their own with capstop and capcareful
 	CapStop    bool `json:"capStop,omitempty"`
@@ -1570,7 +1566,6 @@ func providersState() providersJSON {
 				connects = agent.ConnectsAgents()
 			}
 			info.ConnectAgents = connects[p.ID]
-			info.RemoteUpdate = remoteUpdateNote(p.ID, time.Now())
 		}
 		s.Providers = append(s.Providers, info)
 	}
@@ -1628,7 +1623,7 @@ func providersState() providersJSON {
 	} else {
 		o := gateway.ServedBy()
 		s.Gateway.Running, s.Gateway.Window, s.Gateway.Version = o.Running, o.Window, o.Version
-		s.Gateway.Older = o.Running && update.Newer(gateway.Version, o.Version)
+		s.Gateway.Older = o.Running && sysutil.Newer(gateway.Version, o.Version)
 		// the process that is routing, for the Routing page to name it
 		// (#2606): another magpie on this computer, whose routing this
 		// console shows through OwnerTrace, and its lanes for the rows
@@ -3874,10 +3869,8 @@ func providerRoutes(mux *http.ServeMux, w Windows) {
 	mux.HandleFunc("POST /api/open", func(rw http.ResponseWriter, r *http.Request) {
 		var in struct{ URL string }
 		_ = json.NewDecoder(r.Body).Decode(&in)
-		// and System Settings' Login Items, where Open at login is allowed
-		// again: that one pane, not System Settings' scheme at large; and
-		// the Add sheet's "Become a sponsor", that one address, not mailto:
-		if in.URL == sponsorMail || strings.HasPrefix(in.URL, "https://") || strings.HasPrefix(in.URL, "http://") || strings.HasPrefix(in.URL, agent.CindyScheme) || strings.HasPrefix(in.URL, agent.LodyScheme) || strings.HasPrefix(in.URL, agent.AionUiScheme) || strings.HasPrefix(in.URL, agent.CherryStudioScheme) || in.URL == autostart.LoginItemsURL {
+		// and the Add sheet's "Become a sponsor", that one address, not mailto:
+		if in.URL == sponsorMail || strings.HasPrefix(in.URL, "https://") || strings.HasPrefix(in.URL, "http://") || strings.HasPrefix(in.URL, agent.CindyScheme) || strings.HasPrefix(in.URL, agent.LodyScheme) || strings.HasPrefix(in.URL, agent.AionUiScheme) || strings.HasPrefix(in.URL, agent.CherryStudioScheme) {
 			open := w.OpenURL
 			// an app's import link is handed over only when something
 			// here opens it: the system says nothing when nothing does,

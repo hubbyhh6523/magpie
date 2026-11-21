@@ -22,16 +22,12 @@ import (
 
 	"github.com/yetone/magpie/internal/agent"
 	"github.com/yetone/magpie/internal/appdir"
-	"github.com/yetone/magpie/internal/autostart"
-	"github.com/yetone/magpie/internal/ccswitchlink"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/library"
-	"github.com/yetone/magpie/internal/omarchy"
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/settings"
 	"github.com/yetone/magpie/internal/shortcut"
-	"github.com/yetone/magpie/internal/stats"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 	"github.com/yetone/magpie/internal/webview2env"
 )
 
@@ -87,18 +83,9 @@ type host struct {
 	panelHeight int          // the panel's, in points
 	panelPage   int          // what its page last asked for, in CSS pixels
 	textSize    atomic.Int64 // Settings' text size, in percent (settings.TextSizes)
-	hyprRoom    int          // how tall it may grow under Hyprland's bar; 0 elsewhere
-	clicks      sync.Once    // Hyprland's clicks heard, to close the panel on one outside it
 	glides      atomic.Int64 // the newest panel glide; older ones stop
 	barTray     atomic.Int64 // the newest setTrayInBar; older ones stop
 	query       string       // what the windows' URLs carry (a forced theme)
-
-	// niri places the panel as it opens (#1670): niriWatch starts its
-	// watch once, and iconX is where the tray icon was just clicked
-	// across its bar
-	niri      omarchy.NiriPanel
-	niriWatch sync.Once
-	iconX     atomic.Pointer[int]
 
 	// closing is set while a full-screen main window, closed, leaves full
 	// screen; it is hidden once it has
@@ -198,8 +185,7 @@ func (h *host) ChooseFolder(title string) (string, error) {
 	return d.PromptForSingleSelection()
 }
 
-// panelTitle names the panel for Hyprland's rule, which places it, and
-// for niri, which finds it by it (the main window is "magpie")
+// panelTitle names the panel (the main window is "magpie")
 const panelTitle = "magpie panel"
 
 // FitPanel grows or shrinks the panel to its content and keeps it anchored
@@ -240,9 +226,6 @@ func (h *host) panelW() int { return zoomed(panelWidth, h.zoom()) }
 // panelRoom is how tall the panel can be on its screen: the work area,
 // less the gap under the menu bar (or over the taskbar) and a little air.
 func (h *host) panelRoom() int {
-	if h.hyprRoom > 0 { // under Hyprland's bar, down to the work area's foot
-		return h.hyprRoom
-	}
 	if _, rh := screenRoom(h.panel); rh > 0 {
 		return rh - 16
 	}
@@ -344,19 +327,16 @@ func Run(version string, showMain bool, link string) error {
 	// itself there first, and Open at login opens that one from now on.
 	// The first time, it asks where (installdir_windows.go).
 	askInstallFolder()
-	if from, to := update.Settle(); to != "" {
-		err := update.Forward(from, to)
+	if from, to := sysutil.Settle(); to != "" {
+		err := sysutil.Forward(from, to)
 		if err == nil {
-			if err := autostart.Repoint(from, to); err != nil {
-				log.Println("open at login:", err)
-			}
 			return nil
 		}
 		log.Println("install:", err)
 	}
 	// A restart to update on a Mac or Linux started this one beside the
 	// magpie before, which hands it the gateway (handover.go).
-	startExe, _ = update.Executable()
+	startExe, _ = sysutil.Executable()
 	handoverHost.Store(true)
 	pausable.Store(true) // the gateway paused from its menu (gatewaypause.go)
 	before := 0
@@ -365,9 +345,9 @@ func Run(version string, showMain bool, link string) error {
 	}
 	// After an update off the Mac, the old process starts this one and then
 	// quits; let it go before looking for the gateway.
-	update.AwaitPredecessor()
+	sysutil.AwaitPredecessor()
 	// installed from a download just now: what magpie left beside it goes
-	update.Settled()
+	sysutil.Settled()
 	// the Mac's second launch hands over to the magpie already running
 	if runningAlready(showMain || OpenPanel, link) {
 		return nil
@@ -385,11 +365,6 @@ func Run(version string, showMain bool, link string) error {
 		}
 		// Windows has no installer to put magpie in the Start menu
 		shortcut.Ensure()
-		// Open at login as this version writes it (the Mac's, so a restart
-		// to update from a magpie opened at login comes back)
-		if err := autostart.Refresh(); err != nil {
-			log.Println("open at login:", err)
-		}
 	}()
 	// MAGPIE_THEME=light|dark forces the palette; handy for screenshots.
 	theme := ""
@@ -402,7 +377,6 @@ func Run(version string, showMain bool, link string) error {
 	// the app has started (applyZoom)
 	h.textSize.Store(int64(settings.Shared().TextSize))
 	zoom := h.zoom()
-	go stats.Run(version, "app")
 	handler := devShell(h)
 	ownPage := handler == nil
 	var gw *gateway.Server
@@ -471,7 +445,6 @@ func Run(version string, showMain bool, link string) error {
 			// gone they still go on (LukeMa on X)
 			agent.PortCodexRollouts(3 * time.Second)
 			restoreAgentsOnQuit()
-			updates.install(false)
 		},
 		// Wails exits on some webview errors; say why before it does.
 		ErrorHandler: func(err error) { webView2Failed(h.app, err) },
@@ -553,35 +526,21 @@ func Run(version string, showMain bool, link string) error {
 	})
 	menu.AddSeparator()
 	ver := menu.Add(labels.version).SetEnabled(false)
-	var ready string // the version waiting for a restart; on the main thread
+	var ready string // always "": no update ever waits for a restart
 	restart := menu.Add(labels.restart)
 	restart.OnClick(func(*application.Context) {
-		// the window comes back if it was open; the tray alone if not
-		if updates.json().State != "ready" {
-			// no update: magpie as it is (restart.go), its requests
-			// handed over where the gateway can be
-			go func() {
-				if restartSelfNow(false, h.MainShown(), "") {
-					leave(h.app.Quit)
-				}
-			}()
-			return
-		}
-		now := func() bool {
-			if restartToUpdate(false, h.MainShown(), "") {
+		// the window comes back if it was open; the tray alone if not:
+		// magpie as it is (restart.go), its requests handed over where
+		// the gateway can be
+		go func() {
+			if restartSelfNow(false, h.MainShown(), "") {
 				leave(h.app.Quit)
-				return true
 			}
-			return false
-		}
-		updates.restartAsked(now)
+		}()
 	})
 	quit := menu.Add(labels.quit).OnClick(func(*application.Context) { go h.AskQuit() })
 	relabel := func() {
 		l := trayMenuLabels(trayLang(settings.Shared().Lang, systemLang), version, ready, pausedNow())
-		if waiting, b := updates.waitingFor(); waiting && ready != "" {
-			l.restart = trayRestartNow(trayLang(settings.Shared().Lang, systemLang), b)
-		}
 		open.SetLabel(l.open)
 		pause.SetLabel(l.pause)
 		ver.SetLabel(l.version)
@@ -594,24 +553,6 @@ func Run(version string, showMain bool, link string) error {
 	}
 	onLang = func() { application.InvokeSync(relabel) }
 	onPaused = onLang
-	updates.onReady = func(v string) {
-		application.InvokeSync(func() {
-			ready = v
-			relabel()
-		})
-	}
-	updates.onWait = func() { application.InvokeSync(relabel) }
-	// Settings' AutoRestart, and the other restarts nobody clicked:
-	// back in the tray alone (restartBySelf)
-	updates.autoRestart = func() bool {
-		if restartBySelf() {
-			leave(h.app.Quit)
-			return true
-		}
-		return false
-	}
-	updates.start()
-	news.start()
 	// the library written into the agents again, once: one installed or
 	// updated since (or an edit by hand) gets it without a visit to the page
 	go func() {
@@ -629,8 +570,6 @@ func Run(version string, showMain bool, link string) error {
 	}()
 	// conversations read into memory, when switched on (Memory tab)
 	go keepDistilling(backendCtx)
-	// memories read for search by meaning, when switched on
-	go keepEmbedding(backendCtx)
 
 	// before the item is made, which starts as hidden as AppKit kept it
 	hiddenAtStart := bringTrayBack()
@@ -721,9 +660,6 @@ func Run(version string, showMain bool, link string) error {
 			h.ShowMain("")
 			return
 		}
-		if x, ok := trayClick(h.tray); ok {
-			h.iconX.Store(&x)
-		}
 		h.togglePanel()
 	})
 
@@ -776,16 +712,6 @@ func Run(version string, showMain bool, link string) error {
 	// Windows and Linux also report the start's own link as an event.
 	var skip sync.Once
 	h.app.Event.OnApplicationEvent(events.Common.ApplicationLaunchedWithUrl, func(e *application.ApplicationEvent) {
-		// a ccswitch:// link the Mac's Launch Services still sends here, from
-		// an older magpie's claim: CC Switch opens it and has its scheme back
-		if l := e.Context().URL(); ccswitchlink.Is(l) {
-			go func() {
-				if err := ccswitchlink.Forward(l); err != nil {
-					log.Println("ccswitch:// link:", err)
-				}
-			}()
-			return
-		}
 		u := ImportLink([]string{e.Context().URL()})
 		dup := false
 		if u == link {
@@ -1016,19 +942,6 @@ func (h *host) togglePanelNow() {
 		h.whenLoaded(h.panel, h.togglePanel)
 		return
 	}
-	if omarchy.Hyprland() {
-		if h.panel.IsVisible() {
-			h.hidePanel()
-			return
-		}
-		h.placePanel()
-	}
-	// niri places it as it opens (see omarchy.NiriPanel), by the click
-	// that opened it, if a click did
-	if x := h.iconX.Swap(nil); omarchy.Niri() && !h.panel.IsVisible() {
-		h.niriWatch.Do(func() { go h.niri.Watch(panelTitle) })
-		h.niri.Opening(x)
-	}
 	if runtime.GOOS == "darwin" {
 		// Wails' ToggleWindow goes by IsVisible, which on the Mac is the
 		// window's occlusion: under a window over the whole screen (a
@@ -1074,41 +987,7 @@ func (h *host) tellPanelSide() {
 	h.panel.ExecJS(panelOpenAtJS(panelOpenAt(runtime.GOOS, panel, screen, known)))
 }
 
-// placePanel puts the panel, about to open, under Hyprland's bar at the
-// click, the way Omarchy's own drop-downs sit: a Wayland window can't place
-// itself, so Hyprland is given a rule for it (see omarchy.PlacePanel).
-func (h *host) placePanel() {
-	mon, x, y, room, ok := omarchy.PanelAt(h.panelW())
-	if !ok {
-		return
-	}
-	if err := omarchy.PlacePanel(panelTitle, mon, x, y); err != nil {
-		log.Println("hyprland:", err)
-		return
-	}
-	h.hyprRoom = room
-	h.clicks.Do(func() {
-		go omarchy.WatchClicks(func() {
-			switch {
-			case !application.InvokeSyncWithResult(func() bool { return h.panel != nil && h.panel.IsVisible() }): // Escape closed it
-				omarchy.StopClicks()
-			case omarchy.ClickedOutside(panelTitle):
-				application.InvokeAsync(h.hidePanel)
-			}
-		})
-	})
-	if err := omarchy.ReportClicks(); err != nil {
-		log.Println("hyprland:", err)
-	}
-	if _, ht := h.panel.Size(); ht > room && room >= panelMin {
-		h.panelHeight = room
-		h.panel.SetSize(h.panelW(), room)
-	}
-}
-
-// hidePanel closes the panel on Hyprland, where it has no focus-lost to
-// close on (see omarchy.ReportClicks).
+// hidePanel closes the panel.
 func (h *host) hidePanel() {
 	hideWebview(h.panel)
-	go omarchy.StopClicks()
 }

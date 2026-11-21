@@ -18,14 +18,12 @@ import (
 	"github.com/yetone/magpie/internal/backup"
 	"github.com/yetone/magpie/internal/browsermcp"
 	"github.com/yetone/magpie/internal/catalog"
-	"github.com/yetone/magpie/internal/ccswitchlink"
 	"github.com/yetone/magpie/internal/claudebridge"
 	"github.com/yetone/magpie/internal/claudecode"
 	"github.com/yetone/magpie/internal/claudetui"
 	"github.com/yetone/magpie/internal/codexrelay"
 	"github.com/yetone/magpie/internal/davsync"
 	"github.com/yetone/magpie/internal/gateway"
-	"github.com/yetone/magpie/internal/imagemcp"
 	"github.com/yetone/magpie/internal/library"
 	"github.com/yetone/magpie/internal/netproxy"
 	"github.com/yetone/magpie/internal/notices"
@@ -37,8 +35,8 @@ import (
 	"github.com/yetone/magpie/internal/sessions"
 	"github.com/yetone/magpie/internal/settings"
 	"github.com/yetone/magpie/internal/shortcut"
+	"github.com/yetone/magpie/internal/sysutil"
 	"github.com/yetone/magpie/internal/tui"
-	"github.com/yetone/magpie/internal/update"
 )
 
 // version is the root main package's, set at build time
@@ -166,7 +164,6 @@ const usage = `magpie — one place to pick every agent's model
   magpie gateway-key issuer <id> [on|off]   let a key issue short-lived keys under itself (POST /v1/magpie/keys with it), each held to its models, accounts, limits and life
   magpie gateway-key oidc add --key <id> --repo owner/name [--ref refs/heads/main] [--environment name] [--claim name=value]… [--ttl 1h] [--issuer URL] [--audience aud]
                                          let a CI job's OIDC token (GitHub Actions by default) be traded for a key issued under <id> (POST /v1/magpie/keys/oidc); oidc list | remove <rule id>
-  magpie mcp image                the image and video generation MCP server an agent is given from the library (stdio)
   magpie tools [<name>]           the tools magpie's MCP servers give agents (images, vision, web search, plugins'), with their parameters
   magpie tool <name> [--<param> <value>…] [<words>] [-o <file|folder>] [--json]   call one through the running magpie; an image or video it makes is saved
   magpie usage [today|7d|30d|all] tokens and cost per agent, model and subscription account (30d)
@@ -190,20 +187,6 @@ const usage = `magpie — one place to pick every agent's model
   magpie agents                   list every supported agent
   magpie settings [list|get <key>|set <key> <value>|reset <key>] [--json]
                                   every setting the window's Settings page saves, read and set as it saves them (magpie settings help)
-  magpie update [check] [--proxy <url>] [--mirror <prefix>] [--addr host:port] [--force]
-                                  install the newest release (check: only say if there is one); the running
-                                  magpie is restarted into it, found by --addr, MAGPIE_ADDR or the address it
-                                  wrote down (a service started with MAGPIE_ADDR needs none of them); a restart waits at most 10
-                                  minutes for requests in flight, --force restarts at once; --proxy: an
-                                  http(s):// or socks5:// proxy for it; --mirror: a GitHub download mirror put
-                                  before the github.com URL (none unless given; still checked against usemagpie.ai's SHA-256)
-  magpie update mirror [<prefix>|off]  the mirror every update, the app's own too, is downloaded through
-  magpie update channel [stable|daily|every]  which versions updates offer: stable (one a week), daily (one
-                                  a day that passed its tests), an urgent one at once on both, or every
-                                  version as it comes out (the default)
-  magpie update auto [on|off] [download|notify] [30m|1h|6h|24h]
-                                  whether the app looks for updates by itself, how often (6h), and whether
-                                  it downloads one at once or only says it is out (notify: for metered networks)
   magpie licenses                 the third-party notices of what magpie is built with
 
 agents: claude (cc), codex, gemini, opencode (oc), mimocode, deveco, pi, goose, cursor, zed, copilot, crush, aside
@@ -254,7 +237,6 @@ func Main(v string) {
 	endProbesOnSignal()
 	gateway.Version = version
 	netproxy.Install()
-	update.GUI = hasGUI
 	err = run(os.Args[1:])
 	proc.EndProbes() // a CLI still being asked something isn't left to init
 	sessions.Saved() // the session index kept, for the next run
@@ -308,9 +290,9 @@ func syncAgentsOnChange() { catalog.Changed = agent.SyncCatalogSoon }
 // magpie reads, before a command that may read them; a var so a test can
 // tell it ran.
 var startUp = func() {
-	// started by an update, the magpie it replaces goes first: the moves
+	// started by a restart, the magpie it replaces goes first: the moves
 	// below write the files it may still be writing
-	update.AwaitPredecessor()
+	sysutil.AwaitPredecessor()
 	makeDirs()
 	settings.Migrate()
 	// every built-in plugin starts on (plugins.yml), on a new install too
@@ -401,12 +383,6 @@ func run(args []string) error {
 			return nil
 		}
 	}
-	// a ccswitch:// link an older magpie's claim on CC Switch's scheme
-	// handed over (Windows, Linux): CC Switch opens it and has its scheme
-	// back (ccswitchlink), and nothing here is read, moved or started
-	if len(args) > 0 && ccswitchlink.Is(args[0]) {
-		return ccswitchlink.Forward(args[0])
-	}
 	if len(args) > 0 && args[0] == "healthcheck" {
 		return healthcheck(args[1:]) // every few seconds in a container: nothing else
 	}
@@ -469,7 +445,10 @@ func run(args []string) error {
 			if len(args) > 1 && args[1] == "sessions" {
 				return browsermcp.RunSessions(args[2:])
 			}
-			return imagemcp.Run(args[1:])
+			if len(args) > 1 {
+				return fmt.Errorf("unknown MCP server %q (there are: browser, search, vision, memory, sessions)", args[1])
+			}
+			return fmt.Errorf("usage: magpie mcp <browser|search|vision|memory|sessions>")
 		case "claude-mcp-helper": // internal: stdio MCP subprocess spawned by Claude Code
 			return claudebridge.RunMCP(args[1:])
 		case claudetui.Command: // internal: Claude Code's interactive mode for the bridge
@@ -621,8 +600,6 @@ func run(args []string) error {
 		return runWindow("usage")
 	case "panel":
 		return runPanel()
-	case "autostart":
-		return autostartCmd(args[1:])
 	case "daemon":
 		return daemonCmd(args[1:])
 	case "-h", "--help", "help":
@@ -679,8 +656,6 @@ func run(args []string) error {
 		return quotaCmd(args)
 	case "status":
 		return statusCmd(args[1:])
-	case "update":
-		return updateCmd(args)
 	case "library", "lib":
 		return libraryCmd(args)
 	case "backup":

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // On Windows npm's global folder may be Node.js's own, C:\Program
@@ -77,7 +77,7 @@ func TestNPMUpdateNeedsAdmin(t *testing.T) {
 	}
 
 	// the prompt declined: npm never ran, and the reason names the folder
-	answer = func(*updater) ([]byte, error) { return nil, update.ErrCanceled }
+	answer = func(*updater) ([]byte, error) { return nil, sysutil.ErrCanceled }
 	_, err := a.UpdateCLI()
 	var ae *AdminError
 	if !errors.As(err, &ae) || !ae.Canceled || ae.Prefix != prefix || ae.Agent != "Gemini CLI" || !strings.Contains(err.Error(), prefix) || !strings.Contains(err.Error(), "npm config set prefix") {
@@ -85,7 +85,7 @@ func TestNPMUpdateNeedsAdmin(t *testing.T) {
 	}
 	// no prompt to be had
 	answer = func(*updater) ([]byte, error) {
-		return nil, fmt.Errorf("%w: the service isn't running", update.ErrNoAdmin)
+		return nil, fmt.Errorf("%w: the service isn't running", sysutil.ErrNoAdmin)
 	}
 	if _, err = a.UpdateCLI(); !errors.As(err, &ae) || ae.Canceled || !strings.Contains(err.Error(), "the service isn't running") {
 		t.Fatalf("no prompt: %v", err)

@@ -8,7 +8,6 @@ import (
 
 	"github.com/yetone/magpie/internal/agent"
 	"github.com/yetone/magpie/internal/appdir"
-	"github.com/yetone/magpie/internal/autostart"
 	"github.com/yetone/magpie/internal/daemon"
 	"github.com/yetone/magpie/internal/proc"
 )
@@ -38,7 +37,7 @@ type keeper struct {
 
 var keep = keeper{
 	goos:        runtime.GOOS,
-	autostartOn: func() bool { return autostart.Enabled() != autostart.Off },
+	autostartOn: func() bool { return false },
 	status:      daemon.Get,
 	removed:     daemon.Removed,
 	start:       daemon.Start,

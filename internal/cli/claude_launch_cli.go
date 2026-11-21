@@ -11,7 +11,7 @@ import (
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/plugin"
 	"github.com/yetone/magpie/internal/proc"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // `magpie claude run [args…]` is claude-magpie (baranwang on X): Claude
@@ -109,21 +109,21 @@ func claudeLauncher(args []string) error {
 	}
 	switch what {
 	case "status":
-		if p := update.Launcher(claudeLauncherName); p != "" {
+		if p := sysutil.Launcher(claudeLauncherName); p != "" {
 			fmt.Println(p)
 			return nil
 		}
 		fmt.Println("claude-magpie isn't on your PATH: run `magpie claude launcher add`")
 		return nil
 	case "add":
-		p, err := update.AddLauncher(claudeLauncherName, "claude", "run")
+		p, err := sysutil.AddLauncher(claudeLauncherName, "claude", "run")
 		if err != nil {
 			return err
 		}
 		fmt.Println("claude-magpie:", p)
 		return nil
 	case "remove":
-		p, err := update.RemoveLauncher(claudeLauncherName)
+		p, err := sysutil.RemoveLauncher(claudeLauncherName)
 		if err != nil {
 			return err
 		}

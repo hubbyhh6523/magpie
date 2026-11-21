@@ -16,14 +16,13 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/access"
-	"github.com/yetone/magpie/internal/h264"
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/math/fixed"
 )
 
-// A recording is a video (MP4, or a GIF when asked) of what an agent did in
+// A recording is an animated GIF of what an agent did in
 // its tab: between the
 // browser tool's record_start and record_stop, the gateway takes a picture
 // of the window after each action that can change the page, with the
@@ -178,44 +177,6 @@ func browserRecFrame(data, label string) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-// browserRecQP is the MP4's quantizer: small text stays sharp (about 43 dB
-// on a page of text) at a fraction of the GIF's size.
-const browserRecQP = 23
-
-// browserMP4 is frames as an H.264 MP4: a second a frame, the last held
-// three, every frame the first one's size.
-func browserMP4(frames [][]byte) ([]byte, error) {
-	var e *h264.Encoder
-	var size image.Rectangle
-	for i, f := range frames {
-		img, err := jpeg.Decode(bytes.NewReader(f))
-		if err != nil {
-			return nil, err
-		}
-		b := img.Bounds()
-		if e == nil {
-			size = image.Rect(0, 0, b.Dx(), b.Dy())
-			if e, err = h264.NewEncoder(b.Dx(), b.Dy(), browserRecQP); err != nil {
-				return nil, err
-			}
-		} else if b.Dx() != size.Dx() || b.Dy() != size.Dy() {
-			// a window resized: every frame is the first one's size
-			dst := image.NewRGBA(size)
-			draw.ApproxBiLinear.Scale(dst, size, img, b, draw.Src, nil)
-			img = dst
-		}
-		ms := 1000
-		if i == len(frames)-1 {
-			ms = 3000
-		}
-		e.Add(img, ms)
-	}
-	if e == nil {
-		return nil, errors.New("no frames")
-	}
-	return e.MP4(), nil
-}
-
 // browserGIF is frames as an animated GIF: a second a frame, the last held
 // three. Each frame after the first holds only the rectangle that changed.
 func browserGIF(frames [][]byte) ([]byte, error) {
@@ -312,19 +273,17 @@ func changed(a, b *image.Paletted) image.Rectangle {
 }
 
 // browserRecord answers record_start and record_stop; format is stop's
-// "gif" or "mp4" (the default).
+// "gif" (the default, and the only one left).
 func (s *Server) browserRecord(r *http.Request, session string, stop bool, format string) map[string]any {
 	if !stop {
 		s.browser.recs.start(session)
-		return toolResult("Recording. After each action that can change the page a picture of the window is kept, with the action under it; record_stop makes them a video.", false)
+		return toolResult("Recording. After each action that can change the page a picture of the window is kept, with the action under it; record_stop makes them an animated GIF.", false)
 	}
-	name, mt, encode := "MP4", "video/mp4", browserMP4
+	name, mt, encode := "GIF", "image/gif", browserGIF
 	switch format {
-	case "", "mp4":
-	case "gif":
-		name, mt, encode = "GIF", "image/gif", browserGIF
+	case "", "gif":
 	default:
-		return toolResult("record_stop's format is mp4 or gif.", true)
+		return toolResult("record_stop's format is gif.", true)
 	}
 	rec := s.browser.recs.stop(session)
 	if rec == nil {

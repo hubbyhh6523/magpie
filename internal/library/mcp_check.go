@@ -25,7 +25,6 @@ import (
 	"github.com/yetone/magpie/internal/netproxy"
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/provider"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
 // The Library page says of each server whether it works, found the only
@@ -580,7 +579,6 @@ func startServer(ctx context.Context, s *Server, distro, dir string) (tree *proc
 		return fail(failed("novar", strings.Join(unset, ", ")))
 	}
 	var cmd *exec.Cmd
-	var t wslrun.Tool
 	stop = func() {}
 	found := ""
 	if distro == "" {
@@ -588,22 +586,8 @@ func startServer(ctx context.Context, s *Server, distro, dir string) (tree *proc
 		prog, found = stdioProgram(command)
 		cmd = proc.Command(prog, args...)
 	} else {
-		var err error
-		t, err = wslrun.In(distro, command)
-		switch {
-		case errors.Is(err, wslrun.ErrDown):
-			return fail(failed("wsldown", distro))
-		case errors.Is(err, wslrun.ErrNotFound):
-			return fail(failed("notfound", command))
-		case err != nil:
-			return fail(failed("start", "wsl.exe -d "+distro+": "+err.Error()))
-		}
-		// its own context, ended with the check, which ends the run inside
-		// the distro too (killing wsl.exe alone leaves it there); not the
-		// check's, whose timeout is told as one rather than as an exit
-		var rctx context.Context
-		rctx, stop = context.WithCancel(context.WithoutCancel(ctx))
-		cmd = wslCommand(rctx, t, args...)
+		// WSL is gone: magpie can't start a server inside a distro any more
+		return fail(failed("start", "WSL is gone: magpie can't check a server in the "+distro+" distro"))
 	}
 	// Agents start MCP servers from a project or home directory. A magpie
 	// launched from a shortcut (Windows Start menu) often has C:\Windows\system32
@@ -630,12 +614,6 @@ func startServer(ctx context.Context, s *Server, distro, dir string) (tree *proc
 	for k, v := range env {
 		cmd.Env = append(cmd.Env, k+"="+v)
 		names = append(names, k)
-	}
-	if distro != "" {
-		// a run in the distro is given the server's own variables, by
-		// WSLENV, and none of Windows' others
-		slices.Sort(names)
-		cmd.Env = t.Env(cmd.Env, names...)
 	}
 	in, err := cmd.StdinPipe()
 	if err != nil {

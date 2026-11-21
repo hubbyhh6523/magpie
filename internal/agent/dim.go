@@ -27,7 +27,7 @@ package agent
 // DIM_API_FORMAT, DIM_API_KEY, DIM_MODEL, and DIM_MAX_CONTEXT_TOKENS with
 // DIM_MAX_OUTPUT_TOKENS, read for that one run only. magpie puts a
 // function named dima in each shell the user has, between "# >>> magpie
-// dima >>>" and "# <<< magpie dima <<<" (update.ShellFunction), which
+// dima >>>" and "# <<< magpie dima <<<" (sysutil.ShellFunction), which
 // runs `magpie dim run` (cli/start_cli.go) to start the real dima with
 // them. The format is openai-compatible, Dim's generic provider, not
 // openai-chat, which Dim takes for OpenAI's own. Once the daemon is
@@ -51,7 +51,7 @@ import (
 	"github.com/yetone/magpie/internal/edit"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/proc"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // dimFile is magpie's file holding the model picked for Dim.
@@ -145,16 +145,16 @@ func dimIn(at place) *Agent {
 			return
 		}
 		if set {
-			update.ShellFunction("dima", spec().function)
+			sysutil.ShellFunction("dima", spec().function)
 		} else {
-			update.DropShellFunction("dima")
+			sysutil.DropShellFunction("dima")
 		}
 	}
 	shellIn := func() []string {
 		if !local() {
 			return nil
 		}
-		return update.ShellFunctionIn("dima")
+		return sysutil.ShellFunctionIn("dima")
 	}
 	launch := func() string { return dimCommand(gw(), key(), model(), runtime.GOOS == "windows") }
 	return &Agent{
@@ -202,7 +202,7 @@ func dimIn(at place) *Agent {
 			}
 			if in := shellIn(); len(in) > 0 {
 				for i := range in {
-					in[i] = update.TildeHome(in[i])
+					in[i] = sysutil.TildeHome(in[i])
 				}
 				return noticeLaunchTyped.say("agent", "Dim", "bin", "dima", "profiles", strings.Join(in, ", "), "command", launch())
 			}

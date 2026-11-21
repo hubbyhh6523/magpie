@@ -14,7 +14,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/yetone/magpie/internal/appdir"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 	"golang.org/x/sys/windows"
 )
 
@@ -142,7 +142,7 @@ func webView2Failed(app *application.App, err error) {
 	try := webView2Try(os.Getenv(webView2TryEnv)) + 1
 	if try < webView2Tries {
 		log.Printf("magpie: starting again (start %d of %d)", try+1, webView2Tries)
-		if rerr := update.Respawn(fmt.Sprintf("%s=%d", webView2TryEnv, try)); rerr != nil {
+		if rerr := sysutil.Respawn(fmt.Sprintf("%s=%d", webView2TryEnv, try)); rerr != nil {
 			log.Println("magpie: starting again:", rerr)
 		} else {
 			return

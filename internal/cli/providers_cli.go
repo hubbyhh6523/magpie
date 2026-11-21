@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"maps"
 	"math"
 	"os"
@@ -21,10 +20,8 @@ import (
 	"github.com/yetone/magpie/internal/catalog"
 	"github.com/yetone/magpie/internal/daemon"
 	"github.com/yetone/magpie/internal/gateway"
-	"github.com/yetone/magpie/internal/plugin"
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/stats"
 )
 
 var amber = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#B45309", Dark: "#F2B544"})
@@ -1735,7 +1732,6 @@ func advertisedURL() string {
 // serve: `magpie serve` — the gateway alone, in the foreground.
 func serve() error {
 	s := gateway.New()
-	go stats.Run(version, "serve")
 	catalog.Seed()         // the shipped copy, when models.dev can't be reached
 	go catalog.KeepFresh() // new models' prices, in a gateway left running
 	// a signed-in account's list exists only at its vendor: asked for here
@@ -1777,20 +1773,8 @@ func serve() error {
 			fmt.Println(amber.Render("!"), x.Agent+":", x.Why)
 		}
 	}
-	// an update put in where this runs from is restarted into
-	// (serve_follow.go)
 	ctx, stop := context.WithCancel(context.Background())
 	defer stop()
-	follow := newServeFollow(s, stop)
-	if follow != nil {
-		gateway.SetRestarter(follow.answer)
-		gateway.SetForceRestarter(follow.answerNow)
-		go follow.run(ctx)
-	}
-	// another magpie using this one updated (serve_update.go), and this
-	// one's own Remote magpies follow it
-	gateway.SetUpdater(serveUpdateAsked(follow))
-	go provider.KeepRemotesUpdated(ctx, version)
 	// the models a Remote magpie's agents are on, as the app follows them
 	go agent.KeepFollowingRemote(ctx, 30*time.Second)
 	drained := make(chan struct{})
@@ -1804,13 +1788,6 @@ func serve() error {
 	err := s.ListenAndServe(ctx)
 	close(drained)
 	finish()
-	if exe := follow.restartTo(); exe != "" {
-		// the plugin hosts end, waited for, first, as magpie web's
-		// reexec does (#3285)
-		plugin.EndHosts()
-		log.Printf("magpie serve: restarting into %s", exe)
-		return serveReexec(exe, os.Args[1:], os.Environ())
-	}
 	return err
 }
 

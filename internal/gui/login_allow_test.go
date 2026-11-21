@@ -6,42 +6,26 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/yetone/magpie/internal/autostart"
 )
 
-// Open at login switched off in System Settings, its launch agent still
-// there, reads as needing to be allowed, not as on (#2120, Anoninz): the
-// row says so and opens Login Items, the one System Settings pane the page
-// may open.
+// Open at login is gone, so the row always reads as off, and System
+// Settings' Login Items pane is no longer one the page may open: none of
+// the System Settings panes in this list opens now.
 func TestLoginNeedsAllowing(t *testing.T) {
 	sandboxHome(t)
-	prev := loginState
-	t.Cleanup(func() { loginState = prev })
-	for _, c := range []struct {
-		st           autostart.State
-		login, allow bool
-	}{{autostart.Off, false, false}, {autostart.On, true, false}, {autostart.NeedsAllowing, true, true}} {
-		loginState = func() autostart.State { return c.st }
-		s := settingsState()
-		if s.Login != c.login || s.LoginAllow != c.allow {
-			t.Errorf("%s: login %v, loginAllow %v; want %v, %v", c.st, s.Login, s.LoginAllow, c.login, c.allow)
-		}
-		b, _ := json.Marshal(s)
-		if got := strings.Contains(string(b), `"loginAllow":true`); got != c.allow {
-			t.Errorf("%s: loginAllow in the JSON is %v: %s", c.st, got, b)
-		}
+	if s := settingsState(); s.Login || s.LoginAllow {
+		t.Errorf("login %v, loginAllow %v; want both false", s.Login, s.LoginAllow)
 	}
 
 	w := &importWindows{}
 	mux := http.NewServeMux()
 	providerRoutes(mux, w)
-	for _, link := range []string{autostart.LoginItemsURL, "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders", "x-apple.systempreferences:"} {
+	for _, link := range []string{"x-apple.systempreferences:com.apple.LoginItems-Settings.extension", "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders", "x-apple.systempreferences:"} {
 		w.opened = ""
 		body, _ := json.Marshal(map[string]string{"url": link})
 		mux.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("POST", "/api/open", strings.NewReader(string(body))))
-		if want := link == autostart.LoginItemsURL; (w.opened == link) != want {
-			t.Errorf("%s: opened %q", link, w.opened)
+		if w.opened != "" {
+			t.Errorf("%s: opened %q, want nothing opened", link, w.opened)
 		}
 	}
 }

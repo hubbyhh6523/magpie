@@ -541,7 +541,7 @@ var errHostsEnded = errors.New("magpie is restarting; the plugins are back in a 
 
 // EndHosts stops every plugin host, waits until each has been waited for,
 // and starts none after: what magpie runs before it puts a new version in
-// its own place (update.Reexec). A host still running at the exec was one
+// its own place (sysutil.Reexec). A host still running at the exec was one
 // nothing waited for after it, so each restart to update (magpie web's
 // AutoRestart) left one <defunct> magpie-bun under magpie's pid for as long
 // as it ran (#3285, found by skygunner and AAEE86; acezan on Discord saw

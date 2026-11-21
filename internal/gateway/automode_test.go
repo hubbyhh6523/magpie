@@ -22,7 +22,6 @@ import (
 	"github.com/yetone/magpie/internal/catalog"
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/testenv"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
 // autoModeAsk is Claude Code's auto mode classifier's first stage as it
@@ -770,16 +769,6 @@ for line in sys.stdin:
 			t.Fatalf("stale/modified context: %s != %s", got, expected)
 		}
 		messages = append(messages, map[string]any{"role": "assistant", "content": text}, map[string]any{"role": "user", "content": "next"})
-	}
-}
-
-// The beta must reach a Claude Code running in WSL as well as a native run.
-func TestClaudeBridgeSafeguardWSLEnv(t *testing.T) {
-	cli := claudeCLI{wsl: &wslrun.Tool{}}
-	env := cli.env([]string{"ANTHROPIC_BETAS=dangerous-tool-use-2026-09-03"}, "")
-	if !slices.Contains(env, "ANTHROPIC_BETAS=dangerous-tool-use-2026-09-03") ||
-		!slices.Contains(env, "WSLENV=ANTHROPIC_BETAS") {
-		t.Fatalf("safety beta not forwarded to WSL: %v", env)
 	}
 }
 

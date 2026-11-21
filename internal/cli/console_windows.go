@@ -5,7 +5,7 @@ import (
 	"syscall"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // The desktop build is linked as a GUI program so double-clicking it opens
@@ -15,15 +15,15 @@ import (
 // somewhere to go and is left alone.
 //
 // magpie.com, the console program a terminal runs for `magpie` (#3737,
-// update.EnsureCompanion), hands over its own standard handles, redirected
-// or the terminal's, and says so in update.ComEnv: they are kept, and its
+// sysutil.EnsureCompanion), hands over its own standard handles, redirected
+// or the terminal's, and says so in sysutil.ComEnv: they are kept, and its
 // console is borrowed too, so Ctrl+C, a hidden prompt and the programs
 // magpie starts have it. The variable is taken out of the environment, so
 // what magpie starts doesn't read it as its own.
 func init() {
-	fromCom := os.Getenv(update.ComEnv) != ""
+	fromCom := os.Getenv(sysutil.ComEnv) != ""
 	if fromCom {
-		os.Unsetenv(update.ComEnv)
+		os.Unsetenv(sysutil.ComEnv)
 	}
 	if len(os.Args) < 2 {
 		return
@@ -76,10 +76,10 @@ func init() {
 // companion has a command run in a terminal bring the magpie.com beside
 // this app up, or write it there when the folder is on PATH: run as
 // magpie.exe, the first command after an update to this version, the next
-// `magpie` is waited for (update.EnsureCompanion).
+// `magpie` is waited for (sysutil.EnsureCompanion).
 func companion() {
-	if exe, err := update.Executable(); err == nil {
-		update.EnsureCompanion(exe)
+	if exe, err := sysutil.Executable(); err == nil {
+		sysutil.EnsureCompanion(exe)
 	}
 }
 

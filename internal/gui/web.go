@@ -24,7 +24,7 @@ import (
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/plugin"
 	"github.com/yetone/magpie/internal/proc"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // `magpie web` serves the window's page to a browser, for a computer that
@@ -133,16 +133,6 @@ func StartWeb(addr, version string) (*Web, error) {
 		ReadHeaderTimeout: 30 * time.Second,
 	}
 	go w.srv.Serve(ln)
-	// Settings' AutoRestart: magpie web runs on as the new version (#2096)
-	updates.autoRestart = func() bool {
-		if restartInto(true, false, "", true) {
-			quit()
-			return true
-		}
-		return false
-	}
-	updates.start()
-	news.start()
 	return w, nil
 }
 
@@ -162,13 +152,13 @@ func (w *Web) Wait() error {
 	if !webReexec.Load() {
 		return nil
 	}
-	exe, err := update.Executable()
+	exe, err := sysutil.Executable()
 	if err != nil {
 		return err
 	}
 	// End and reap plugin hosts before replacing this process (#3285).
 	plugin.EndHosts()
-	return update.Reexec(exe, os.Args[1:], append(os.Environ(), webRunKey+"="+w.key))
+	return sysutil.Reexec(exe, os.Args[1:], append(os.Environ(), webRunKey+"="+w.key))
 }
 
 // Close stops the web page and waits for this process's gateway to save its sessions.

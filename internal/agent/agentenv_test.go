@@ -33,7 +33,6 @@ var notAnAgent = map[string]string{
 	"MAGPIE_PUBLIC_URL":     "magpie's own public URL",
 	"MAGPIE_TRUST_PROXY":    "magpie's own: a proxy here signs its clients in (#1022)",
 	"MAGPIE_EFFORT_UPDATES": "magpie's own switch for effort updates (#617)",
-	"MAGPIE_SITE_ORIGIN":    "a site origin magpie's Omarchy theme answers, to try the site locally",
 	"MAGPIE_PARTNERS":       "where magpie's own partner list is read from (a URL, or off), not a folder",
 	"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "Claude Code's behaviour flag, not an agent's folder",
 	"GIT_SSH":             "the user's own SSH program for git, which a skill fetched with their git keeps",

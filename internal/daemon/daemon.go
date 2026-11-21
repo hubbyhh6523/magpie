@@ -21,7 +21,6 @@ import (
 
 	"github.com/yetone/magpie/internal/agentenv"
 	"github.com/yetone/magpie/internal/appdir"
-	"github.com/yetone/magpie/internal/autostart"
 	"github.com/yetone/magpie/internal/edit"
 	"github.com/yetone/magpie/internal/lazyre"
 	"github.com/yetone/magpie/internal/proc"
@@ -92,11 +91,6 @@ func Install(o Options) error {
 	m, err := current()
 	if err != nil {
 		return err
-	}
-	// the app opened at login serves the gateway too: the two would take
-	// turns failing on the port
-	if autostartEnabled() {
-		return errors.New("magpie already opens at login and serves the gateway: run `magpie autostart off` first, or keep that instead")
 	}
 	if o.Web != "" && o.Key == "" {
 		return errors.New("the page needs a key")
@@ -365,16 +359,6 @@ func installed(f func(manager) error) error {
 		return f(m)
 	})
 }
-
-// autostartEnabled: magpie opens at login, by its own record or, on
-// Linux, by a package's entry (#3372). On the Mac a record the user has
-// switched off in System Settings for now counts all the same, since
-// switching it back on there opens the app with the service still
-// installed. On Linux an entry the desktop's own settings switched off
-// (Hidden, X-GNOME-Autostart-enabled=false) reads off, as Open at login
-// reads it, so the install goes in; and a package's entry counts on a box
-// no desktop logs into too (#3756). A var for the tests.
-var autostartEnabled = func() bool { return autostart.Enabled() != autostart.Off }
 
 // self is the program the service runs: this one, by the name on PATH
 // when that is this same file, so a package manager's link (Homebrew's

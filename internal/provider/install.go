@@ -47,10 +47,7 @@ func cliFor(agent string) (agentCLI, bool) {
 		// build, checked against its manifest, kept in magpie's cache and
 		// not put on PATH
 		return agentCLI{Name: "Claude Code", find: func() string {
-			c, ok := findClaudeCLI()
-			if ok && c.wsl != nil {
-				return "wsl:" + c.wsl.Distro
-			}
+			c, _ := findClaudeCLI()
 			return c.path
 		}, native: downloadClaudeCode, manual: "magpie claude-code install"}, true
 	case "devin":

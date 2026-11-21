@@ -15,7 +15,7 @@ import (
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/handoff"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // A restart to update on a Mac or Linux hands the gateway to the new
@@ -58,6 +58,15 @@ var handsOver = func() bool {
 // restartBusy is what a restart now would cut short: the gateway's Busy,
 // or, when the restart hands it over, the bridge's turns alone (counted
 // as Requests, their end as Last), with the turns parked on tools.
+// gatewayBusy is what the gateway this process serves has in flight;
+// nothing when another magpie serves it, which a restart here leaves be.
+var gatewayBusy = func() gateway.Busy {
+	if gw := served.Load(); gw != nil {
+		return gw.Busy()
+	}
+	return gateway.Busy{}
+}
+
 func restartBusy() gateway.Busy { return blocking(gatewayBusy(), handsOver()) }
 
 // blocking is the part of b a restart cuts short; handover, it hands the
@@ -98,8 +107,8 @@ var (
 // startNew starts the new version beside this one: the Mac's bundle, or
 // the binary. Vars for tests.
 var (
-	openBeside  = update.OpenBeside
-	startBeside = update.StartBeside
+	openBeside  = sysutil.OpenBeside
+	startBeside = sysutil.StartBeside
 )
 
 // beginHandover starts the new version and hands the gateway over to it
@@ -112,7 +121,7 @@ func beginHandover(bundle, exe string, window bool, view string, quiet bool) boo
 	}
 	ho := &handover{gw: served.Load(), quit: make(chan func(), 1)}
 	if bundle != "" {
-		ho.fallback = func() error { return update.Relaunch(bundle, window, quiet) }
+		ho.fallback = func() error { return sysutil.Relaunch(bundle, window, quiet) }
 	} else {
 		ho.fallback = func() error { return relaunchBinary(exe, "", window, view) }
 	}

@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/agent"
+	"github.com/yetone/magpie/internal/sysutil"
 	"github.com/yetone/magpie/internal/testenv"
-	"github.com/yetone/magpie/internal/update"
 )
 
 // elevation fakes Windows' administrator prompt: writable is whether the
@@ -110,7 +110,7 @@ func TestRTKUpgradeAsksForAdmin(t *testing.T) {
 
 	// declined: why, and what to do, with no npm advice
 	reset()
-	answer = func() ([]byte, error) { return nil, update.ErrCanceled }
+	answer = func() ([]byte, error) { return nil, sysutil.ErrCanceled }
 	_, err = UpgradeRTK()
 	var ae *agent.AdminError
 	if !errors.As(err, &ae) || !ae.Canceled || ae.Via != "winget" || ae.Prefix != real || ae.Agent != "RTK" {
@@ -122,7 +122,7 @@ func TestRTKUpgradeAsksForAdmin(t *testing.T) {
 
 	// no prompt to be had: says why
 	reset()
-	answer = func() ([]byte, error) { return nil, fmt.Errorf("%w: ShellExecuteEx: no", update.ErrNoAdmin) }
+	answer = func() ([]byte, error) { return nil, fmt.Errorf("%w: ShellExecuteEx: no", sysutil.ErrNoAdmin) }
 	_, err = UpgradeRTK()
 	if !errors.As(err, &ae) || ae.Canceled || !strings.Contains(err.Error(), "couldn't ask Windows for one (no administrator prompt: ShellExecuteEx: no)") {
 		t.Fatalf("no prompt: %v", err)
@@ -131,7 +131,7 @@ func TestRTKUpgradeAsksForAdmin(t *testing.T) {
 	// winget as administrator has nothing newer: no failure
 	reset()
 	answer = func() ([]byte, error) {
-		return []byte("No available upgrade found."), &update.ExitError{Code: wingetNoUpgrade}
+		return []byte("No available upgrade found."), &sysutil.ExitError{Code: wingetNoUpgrade}
 	}
 	if v, err := UpgradeRTK(); err != nil || !strings.Contains(v.Note, "winget") {
 		t.Fatalf("no upgrade: %+v, %v", v, err)
@@ -139,7 +139,7 @@ func TestRTKUpgradeAsksForAdmin(t *testing.T) {
 
 	// winget as administrator fails: said as any winget failure
 	reset()
-	answer = func() ([]byte, error) { return nil, &update.ExitError{Code: 0x8A150101} }
+	answer = func() ([]byte, error) { return nil, &sysutil.ExitError{Code: 0x8A150101} }
 	if _, err := UpgradeRTK(); err == nil || !strings.Contains(err.Error(), "exit code 0x8A150101") || !strings.Contains(err.Error(), "RTK is in use") {
 		t.Fatalf("failed as administrator: %v", err)
 	}

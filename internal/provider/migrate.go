@@ -48,7 +48,7 @@ import (
 	"github.com/yetone/magpie/internal/lazyre"
 	"github.com/yetone/magpie/internal/plugin"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // A migration's states.
@@ -79,6 +79,23 @@ const (
 )
 
 // retryWait is how long a failed move of id waits before it is tried again.
+// num is a JSON number read into any (a float64, or an int64 before it
+// was written out) as an int64.
+func num(v any) int64 {
+	switch n := v.(type) {
+	case float64:
+		return int64(n)
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	case json.Number:
+		i, _ := n.Int64()
+		return i
+	}
+	return 0
+}
+
 func retryWait(id string) time.Duration {
 	if BuiltinRetired(id) {
 		return retiredRetry
@@ -319,8 +336,6 @@ var retiredBuiltins = map[string]bool{
 	"zed":             true,
 	"kiro":            true,
 	"cursor":          true,
-	"qoder":           true,
-	QoderCNID:         true,
 	"workbuddy":       true,
 	WorkBuddyAIID:     true,
 	MiMoID:            true,
@@ -543,7 +558,7 @@ func lockMoves() (func(), error) {
 		if b, rerr := os.ReadFile(p); rerr == nil {
 			f := strings.Fields(string(b))
 			here := len(f) == 1 || len(f) == 2 && f[1] == movesHost
-			if pid, perr := strconv.Atoi(strings.Join(f[:min(len(f), 1)], "")); perr == nil && here && pid != os.Getpid() && !update.Alive(pid) {
+			if pid, perr := strconv.Atoi(strings.Join(f[:min(len(f), 1)], "")); perr == nil && here && pid != os.Getpid() && !sysutil.Alive(pid) {
 				os.Remove(p)
 				continue
 			}
@@ -572,7 +587,7 @@ var (
 				return fmt.Errorf("%s is turned off in Plugins", pkg)
 			}
 			v := plugin.Version(e.Spec)
-			if min == "" || !update.Newer(min, v) {
+			if min == "" || !sysutil.Newer(min, v) {
 				return nil
 			}
 			if plugin.IsPath(e.Spec) {
@@ -594,7 +609,7 @@ var (
 			_, err = addPlugin(ctx, found)
 		}
 		if err == nil && min != "" {
-			if v := plugin.Version(pkg); update.Newer(min, v) {
+			if v := plugin.Version(pkg); sysutil.Newer(min, v) {
 				return fmt.Errorf("%s %s is installed; moving needs %s or newer", pkg, v, min)
 			}
 		}
@@ -1136,7 +1151,7 @@ func HandOver(ctx context.Context, accounts bool) map[string]error {
 func pluginReady(mv *mover) bool {
 	for _, e := range plugin.Load().Plugins {
 		if plugin.PackageName(e.Spec) == mv.pkg {
-			return !e.Off && (mv.min == "" || !update.Newer(mv.min, plugin.Version(e.Spec)))
+			return !e.Off && (mv.min == "" || !sysutil.Newer(mv.min, plugin.Version(e.Spec)))
 		}
 	}
 	return false

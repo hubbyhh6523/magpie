@@ -23,7 +23,7 @@ import (
 	"github.com/yetone/magpie/internal/ghtoken"
 	"github.com/yetone/magpie/internal/netproxy"
 	"github.com/yetone/magpie/internal/source"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // The plugin market: the plugins magpie suggests, from the community
@@ -522,7 +522,7 @@ func npmAsk(ctx context.Context, name string) (NPM, error) {
 	// version of, is as the community repo's dist branch has it, which
 	// magpie installs it from (dist.go)
 	d, ok, derr := distInfo(ctx, name)
-	if ok && (latestErr != nil || update.Newer(d.Version, info.Version)) {
+	if ok && (latestErr != nil || sysutil.Newer(d.Version, info.Version)) {
 		info, latestErr = d, nil
 	}
 	// npm not having it is "missing" only once the dist branch has

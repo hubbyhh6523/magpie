@@ -28,7 +28,7 @@ import (
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/plugin"
 	"github.com/yetone/magpie/internal/provider"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 	"github.com/yetone/magpie/internal/usage"
 )
 
@@ -635,7 +635,7 @@ func plugged(at place, p *agentplug.Agent) *Agent {
 					if distro {
 						in[i] = at.native(in[i])
 					} else {
-						in[i] = update.TildeHome(in[i])
+						in[i] = sysutil.TildeHome(in[i])
 					}
 				}
 				return noticeLaunchTyped.say("bin", l.bin, "profiles", strings.Join(in, ", "), "agent", d.Name, "command", cmd)

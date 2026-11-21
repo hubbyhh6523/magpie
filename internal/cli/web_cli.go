@@ -14,7 +14,6 @@ import (
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/gui"
 	"github.com/yetone/magpie/internal/proc"
-	"github.com/yetone/magpie/internal/stats"
 )
 
 // webAddr is where `magpie web` listens unless told: beside the gateway.
@@ -246,7 +245,6 @@ func serveCmd(args []string) error {
 	if web == "" {
 		return serve()
 	}
-	go stats.Run(version, "serve")
 	// the models a Remote magpie's agents are on, as the app follows them
 	go agent.KeepFollowingRemote(context.Background(), 30*time.Second)
 	w, err := gui.StartWeb(web, version)

@@ -432,12 +432,8 @@ var trustGOOS = runtime.GOOS
 // up by when it runs in work (2.1.316, its trust check): the folder's path
 // in NFC, on Windows with forward slashes ("C:/Users/<me>/AppData/Local/
 // Temp/magpie-claude-work"), and the path its links lead to, which is the
-// one a Mac's getcwd says (/private/var/… for /var/…). One in WSL runs in
-// the distro's mount of it.
+// one a Mac's getcwd says (/private/var/… for /var/…).
 func claudeTrustKeys(binary claudeCLI, work string) []string {
-	if binary.wsl != nil {
-		return []string{binary.file(work)}
-	}
 	var keys []string
 	for _, w := range []string{work, evalSymlinks(work)} {
 		if k := claudeTrustKey(w); !slices.Contains(keys, k) {
@@ -461,7 +457,7 @@ func claudeTrustKey(dir string) string {
 // magpie's folder, by its id (sid, "" when it told none): a test's "hi"
 // keeps its transcript there. A folder of the run's own goes whole.
 func dropOneOff(binary claudeCLI, configDir, work, sid string) {
-	if binary.wsl != nil || sid == "" {
+	if sid == "" {
 		return
 	}
 	removeSession(claudeSessions(configDir, work), sid)

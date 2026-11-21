@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/yetone/magpie/internal/gateway"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // agyPluginSrc is @magpie-community/agent-agy's agy.agent.js, as published
@@ -235,7 +235,7 @@ func TestAgyPlugin(t *testing.T) {
 	if Starter("ag") != nil {
 		t.Fatal("Starter took a prefix")
 	}
-	in := update.ShellFunctionIn("agy")
+	in := sysutil.ShellFunctionIn("agy")
 	if len(in) == 0 {
 		t.Fatal("no shell's profile has agy")
 	}
@@ -316,7 +316,7 @@ func TestAgyHandedToPlugin(t *testing.T) {
 	if err := b.Apply("model", "magpie/deepseek/pro"); err != nil {
 		t.Fatal(err)
 	}
-	if len(update.ShellFunctionIn("agy")) == 0 {
+	if len(sysutil.ShellFunctionIn("agy")) == 0 {
 		t.Fatal("the built-in gave no function")
 	}
 

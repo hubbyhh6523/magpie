@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/desktopdir"
-	"github.com/yetone/magpie/internal/desktopiso"
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/settings"
 )
@@ -18,8 +18,10 @@ import (
 // The isolated Claude Desktop (#5671, baranwang on X): on a Mac magpie can
 // run its 3p mode in a folder of its own, desktopdir.Isolated
 // (~/Library/Application Support/Claude-Magpie-3p), started by
-// ~/Applications/Claude Magpie.app (desktopiso), so the user's own
+// ~/Applications/Claude Magpie.app, so the user's own
 // Claude.app stays signed in with Anthropic and both run side by side.
+// The app itself is gone: magpie no longer makes the launcher, so the
+// isolated Desktop can't be turned on any more, only turned off.
 // Off by default (settings.DesktopIsolated): a Desktop on magpie stays as
 // it was for everyone who doesn't turn it on.
 
@@ -52,7 +54,7 @@ func desktopIsolatedSet(goos, home string, getenv func(string) string) (desktopP
 // The isolated Desktop's Code tab runs Claude Code, on ~/.claude like
 // any other unless the user gives it a folder of its own (#6459, xMopf7RF
 // on X): then Claude Magpie.app starts Desktop with CLAUDE_CONFIG_DIR set
-// to desktopIsolatedClaudeDir (desktopiso.Script), which Desktop hands its
+// to desktopIsolatedClaudeDir, which Desktop hands its
 // sessions when its own Settings set no such variable (4.23118, 2.7032:
 // its bundled Claude Code wrote .claude.json, backups, plugins and
 // sessions there, ~/.claude untouched). The windows and capabilities of
@@ -203,7 +205,7 @@ func DesktopIsolatedHere() (DesktopIsolated, bool) {
 	if desktopdir.Isolated(desktopdir.OS, home) == "" {
 		return DesktopIsolated{}, false
 	}
-	return DesktopIsolated{On: desktopIsolatedOn(), Launcher: desktopiso.Here(home), Claude: desktopIsolatedClaudeOn(), ClaudeDir: desktopIsolatedClaudeDir(home)}, true
+	return DesktopIsolated{On: desktopIsolatedOn(), Launcher: desktopIsoHere(home), Claude: desktopIsolatedClaudeOn(), ClaudeDir: desktopIsolatedClaudeDir(home)}, true
 }
 
 // SetDesktopIsolatedClaude gives the isolated Desktop's Code tab a Claude
@@ -226,7 +228,7 @@ func SetDesktopIsolatedClaude(home string, on bool) error {
 	if err := saveDesktopIsolatedClaude(on, true); err != nil {
 		return err
 	}
-	if desktopiso.Here(home) != "" {
+	if desktopIsoHere(home) != "" {
 		app := desktopClaudeApp()
 		if app == "" {
 			return ErrDesktopNoApp
@@ -257,9 +259,28 @@ var desktopClaudeApp = func() string {
 	return ""
 }
 
-// desktopIsoAdd is desktopiso.Add; a test sets it, so no app is
-// registered with Launch Services.
-var desktopIsoAdd = desktopiso.Add
+// desktopIsoAdd is the isolated Desktop's launcher, made again with a new
+// folder; a test sets it, so no app is made. The launcher maker is gone,
+// so it always fails: turning the isolated Desktop on needs one.
+var desktopIsoAdd = func(home, app, dir, claudeDir string) (string, error) {
+	return "", errors.New("Claude Magpie.app can't be made: the isolated Desktop's launcher is gone")
+}
+
+// desktopIsoHere is the isolated Desktop's launcher, "" while magpie
+// hasn't made one. Magpie no longer makes one, but an older magpie's is
+// still found: its bundle id in Contents/Info.plist says it is magpie's.
+func desktopIsoHere(home string) string {
+	p := filepath.Join(home, "Applications", "Claude Magpie.app")
+	info, err := os.ReadFile(filepath.Join(p, "Contents", "Info.plist"))
+	if err == nil && bytes.Contains(info, []byte("<string>ai.usemagpie.claude-desktop</string>")) {
+		return p
+	}
+	return ""
+}
+
+// desktopIsoRemove takes the isolated Desktop's launcher away. The
+// launcher maker is gone, so there is never one to take away.
+func desktopIsoRemove(home string) (string, error) { return "", nil }
 
 // saveDesktopIsolated keeps the user's choice; a var for tests.
 var saveDesktopIsolated = func(on bool) error {
@@ -349,7 +370,7 @@ func SetDesktopIsolated(home string, on bool) (string, error) {
 	if err := saveDesktopIsolated(false); err != nil {
 		return "", err
 	}
-	if _, err := desktopiso.Remove(home); err != nil {
+	if _, err := desktopIsoRemove(home); err != nil {
 		return "", err
 	}
 	desktopClaudeSync(home)
@@ -394,7 +415,7 @@ var desktopIsoQuit = func(ctx context.Context, exe, dir string) error {
 // again, which starts it on its folder.
 func reopenIsolated(ctx context.Context, a *Agent, r restartable, exe string) error {
 	home, _ := os.UserHomeDir()
-	launcher := desktopiso.Here(home)
+	launcher := desktopIsoHere(home)
 	if launcher == "" {
 		return restartErr(noticeRestartNotHere, a)
 	}
@@ -425,7 +446,7 @@ func reopenIsolated(ctx context.Context, a *Agent, r restartable, exe string) er
 // Desktop, by.
 const DesktopTwinID = "claude-desktop#magpie"
 
-// DesktopTwinApp is Claude Magpie, the isolated Desktop (desktopiso), as
+// DesktopTwinApp is Claude Magpie, the isolated Desktop, as
 // an app of its own to the library, as an Android app's twin is (xMopf7RF
 // on X): its MCP servers in Claude-Magpie-3p's claude_desktop_config.json,
 // the only file it reads them from, and its Cowork skills in that folder's
@@ -437,7 +458,7 @@ func DesktopTwinApp(home string) *Agent {
 		return nil
 	}
 	return &Agent{
-		ID: DesktopTwinID, Name: desktopiso.Name, Icon: "claude-color",
+		ID: DesktopTwinID, Name: "Claude Magpie", Icon: "claude-color",
 		Dir: p.dir3p, Path: p.config3p,
 		detect: func() bool { return desktopIsolatedOn() && isDir(p.dir3p) },
 	}

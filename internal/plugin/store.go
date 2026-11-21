@@ -43,7 +43,7 @@ import (
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/settings"
 	"github.com/yetone/magpie/internal/steady"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // Entry is one plugin the user added.
@@ -600,7 +600,7 @@ func Update(ctx context.Context) error {
 			var err error
 			switch {
 			case v != "" && Pinned(e.Spec):
-				if update.Newer(v, Installed(e.Spec)) {
+				if sysutil.Newer(v, Installed(e.Spec)) {
 					_, err = add(ctx, Name(e.Spec), v)
 				} else {
 					err = reinstall(ctx, e.Spec)
@@ -913,7 +913,7 @@ func installAt(ctx context.Context, pkg, version string) error {
 		}
 		return err
 	}
-	if got := Installed(pkg); got == "" || update.Newer(version, got) {
+	if got := Installed(pkg); got == "" || sysutil.Newer(version, got) {
 		if got == "" {
 			got = "nothing"
 		}

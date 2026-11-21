@@ -25,7 +25,7 @@ import (
 	"github.com/yetone/magpie/internal/catalog"
 	"github.com/yetone/magpie/internal/lazyre"
 	"github.com/yetone/magpie/internal/steady"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // bunSettle is how long a Bun release is out before magpie takes it.
@@ -100,7 +100,7 @@ func haveBun(v string) bool {
 
 // usable is whether v may be run: no older than the floor, not set aside.
 func (s bunState) usable(v string) bool {
-	return v != "" && !update.Newer(BunVersion, v) && !slices.Contains(s.Bad, v)
+	return v != "" && !sysutil.Newer(BunVersion, v) && !slices.Contains(s.Bad, v)
 }
 
 // BunInUse is the version of the Bun plugins run on (or will, once it is
@@ -206,7 +206,7 @@ func CheckBun(ctx context.Context) (string, error) {
 	s := readBunState()
 	s.Checked = time.Now().UTC().Truncate(time.Second)
 	use := inUseLocked()
-	if !update.Newer(latest, use) || !s.usable(latest) || time.Since(published) < bunSettle {
+	if !sysutil.Newer(latest, use) || !s.usable(latest) || time.Since(published) < bunSettle {
 		err := writeBunState(s)
 		bunMu.Unlock()
 		return "", err

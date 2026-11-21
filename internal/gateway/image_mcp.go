@@ -30,9 +30,9 @@ import (
 
 // magpie's image generation, the model Settings › Models › Images › Image generation
 // names, is also an MCP server the gateway serves itself, beside image
-// recognition's (JonahFu on X): Magpie Image (internal/imagemcp) is a stdio
-// server the Library gives an agent on this computer, which a gateway in
-// Docker, or an agent on another computer, has none of. Streamable HTTP at
+// recognition's (JonahFu on X): Magpie Image was a stdio server the
+// Library gave an agent on this computer, which is gone; a gateway in
+// Docker, or an agent on another computer, never had one. Streamable HTTP at
 // ImageMCPPath, served and guarded as VisionMCPPath is (serveMCP), with
 // Magpie Image's tools and arguments (ImageToolProps, VideoToolProps)
 // but where to save: the gateway can't write into the agent's project, so

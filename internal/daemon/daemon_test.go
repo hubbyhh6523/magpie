@@ -27,13 +27,12 @@ func fakes(t *testing.T, os_ string) (log, dir string) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the fakes are shell scripts")
 	}
-	prev, prevSelf, prevAuto, prevWiden := goos, self, autostartEnabled, widenPath
-	t.Cleanup(func() { goos, self, autostartEnabled, widenPath = prev, prevSelf, prevAuto, prevWiden })
+	prev, prevSelf, prevWiden := goos, self, widenPath
+	t.Cleanup(func() { goos, self, widenPath = prev, prevSelf, prevWiden })
 	// the login shell of whoever runs the tests is no test's PATH
 	widenPath = func() {}
 	goos = os_
 	self = func() (string, error) { return "/opt/my magpie/magpie%1", nil }
-	autostartEnabled = func() bool { return false }
 	dir = t.TempDir()
 	// a home of the test's own: nothing one test installs is the next's
 	testenv.SetHome(t, filepath.Join(dir, "home"))
@@ -217,23 +216,6 @@ func TestSystemdUnreachable(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	if err := Install(Options{}); err == nil || !strings.Contains(err.Error(), "no systemd") {
 		t.Errorf("got %v, want no systemd", err)
-	}
-}
-
-// The app opened at login serves the gateway too: an install beside it is
-// refused before anything is written.
-func TestRefusedBesideAutostart(t *testing.T) {
-	for _, os_ := range []string{"linux", "darwin"} {
-		t.Run(os_, func(t *testing.T) {
-			log, _ := fakes(t, os_)
-			autostartEnabled = func() bool { return true }
-			if err := Install(Options{}); err == nil || !strings.Contains(err.Error(), "magpie autostart off") {
-				t.Errorf("got %v", err)
-			}
-			if c := calls(t, log); c[0] != "" {
-				t.Errorf("ran %v", c)
-			}
-		})
 	}
 }
 

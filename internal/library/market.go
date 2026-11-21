@@ -95,7 +95,6 @@ func secretEnv(key, label, where string) Input {
 // featured are the servers magpie offers first. Every one was checked: its
 // package is published, its endpoint answers.
 var featured = []MarketServer{
-	selfServer(),
 	browserServer(),
 	searchServer(),
 	visionServer(),
@@ -172,21 +171,6 @@ var featured = []MarketServer{
 // command, which InstallServer puts in when it is added, and in a library
 // carried to another computer, which reads it as its own (self_here.go).
 const magpieCommand = "magpie"
-
-// selfServerName is the name magpie's own image generation server is written
-// under, in every agent's config.
-const selfServerName = "magpie-image"
-
-// selfServer is magpie's own image generation server: generate_image makes
-// an image with the model Settings → Models → Images → Image generation names, saved
-// in the project. It costs what the model does, so it is given only to the
-// agents picked for it.
-func selfServer() MarketServer {
-	m := localServer(selfServerName, "Magpie Image", "Magpie", "https://usemagpie.ai/favicon.png", "https://usemagpie.ai",
-		"Generate and edit images with the image model set in Magpie (Settings › Models › Images), and make short videos with a video model set up in Magpie (Grok Imagine, Seedance), saved in the project.", magpieCommand, []string{"mcp", "image"})
-	m.OptIn = true
-	return m
-}
 
 // browserServerName is the name Magpie Browser's server is written under.
 const browserServerName = "magpie-browser"

@@ -25,20 +25,6 @@ func TestRestartWaitsForWhatAHandoverCantCarry(t *testing.T) {
 		t.Fatal("handing over, waits for requests that the old one finishes after it")
 	}
 
-	oldBusy, oldHands := gatewayBusy, handsOver
-	t.Cleanup(func() { gatewayBusy, handsOver = oldBusy, oldHands })
-	gatewayBusy = func() gateway.Busy { return gateway.Busy{Requests: 2} }
-	u := &updater{state: "ready"}
-	for _, hands := range []bool{false, true} {
-		handsOver = func() bool { return hands }
-		j := u.jsonIn("")
-		if j.Handover != hands {
-			t.Errorf("handover %v: the page reads %v", hands, j.Handover)
-		}
-		if (j.Busy != nil) == hands {
-			t.Errorf("handover %v: the page shows busy %+v", hands, j.Busy)
-		}
-	}
 }
 
 // A restart hands over only from the app, on a Mac or Linux, with the

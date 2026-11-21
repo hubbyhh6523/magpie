@@ -16,9 +16,10 @@ import (
 // A partner pays to be listed, so how often it is seen and picked is
 // counted for it: per day (UTC), per partner, how many times the add sheet
 // showed it, its row was opened, its key page was opened, and a provider
-// was added from it. Nothing else is kept, and the counts go with the
-// day's stats event (internal/stats), only for days that have ended, under
-// the same switches: off with the stats, or with what magpie is used with.
+// was added from it. Nothing else is kept, and the counts are kept on
+// this computer only, for days that have ended, under the same switches:
+// off with the stats, or with what magpie is used with. Nothing sends
+// them anywhere now that the day's stats event is gone.
 
 // What is counted for a partner.
 const (
@@ -53,8 +54,7 @@ var partnerCountMu sync.Mutex
 func partnerCountFile() string { return filepath.Join(appdir.Cache(), "partner-counts.json") }
 
 // partnerCounting reports whether the user lets it be counted: the stats
-// on, and what magpie is used with sent with them. internal/stats reads
-// the same switches.
+// on, and what magpie is used with counted with them.
 func partnerCounting() bool {
 	for _, k := range []string{"DO_NOT_TRACK", "MAGPIE_NO_STATS"} {
 		if v := os.Getenv(k); v != "" && v != "0" && v != "false" {

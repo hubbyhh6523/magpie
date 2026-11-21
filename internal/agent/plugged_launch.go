@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/yetone/magpie/internal/agentplug"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // launchSpec is how a plugin's agent is started: its id, which `magpie
@@ -311,14 +311,14 @@ func (s launchShell) set(on bool) {
 			return
 		}
 		if on {
-			update.ShellFunction(s.l.bin, s.l.function)
+			sysutil.ShellFunction(s.l.bin, s.l.function)
 		} else {
-			update.DropShellFunction(s.l.bin)
+			sysutil.DropShellFunction(s.l.bin)
 		}
 	case on:
-		update.ShellFunctionAt(agyDistroProfiles(s.at), s.l.bin, s.fn)
+		sysutil.ShellFunctionAt(agyDistroProfiles(s.at), s.l.bin, s.fn)
 	default:
-		update.DropShellFunctionAt(agyDistroProfiles(s.at), s.l.bin)
+		sysutil.DropShellFunctionAt(agyDistroProfiles(s.at), s.l.bin)
 	}
 }
 
@@ -328,9 +328,9 @@ func (s launchShell) in() []string {
 		if here, _ := homes(); here != s.at.home {
 			return nil
 		}
-		return update.ShellFunctionIn(s.l.bin)
+		return sysutil.ShellFunctionIn(s.l.bin)
 	}
-	return update.ShellFunctionInAt(agyDistroProfiles(s.at), s.l.bin)
+	return sysutil.ShellFunctionInAt(agyDistroProfiles(s.at), s.l.bin)
 }
 
 // stale says a distro's function names what is no longer so (the

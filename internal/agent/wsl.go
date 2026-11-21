@@ -28,7 +28,6 @@ import (
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/sessions"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
 // An agent installed in a WSL distro reads its config there, not in
@@ -39,7 +38,7 @@ import (
 // an agent of its own, <id>@wsl:<distro> (codex@wsl:Ubuntu,
 // pi@wsl:Ubuntu, claude@wsl:Ubuntu). The gateway it is pointed at is
 // 127.0.0.1 when the distro's 127.0.0.1 reaches Windows' (mirrored or
-// consomme networking, as the distro's wslinfo says, wslrun.HostLoopback;
+// consomme networking, as the distro's wslinfo says, wslHostLoopback;
 // or mirrored in .wslconfig where there is no wslinfo); under NAT it is
 // Windows as WSL sees it, which reaches the gateway only while that
 // listens beyond loopback.
@@ -372,9 +371,50 @@ func below(path, dir string) (string, bool) {
 // consomme, cfg's localhostForwarding=false (wsl2.localhostForwarding)
 // turns the relay of 127.0.0.1 off; it stays the address, with a notice,
 // as Windows' next hop (the default route) is never Windows there.
+// wslHostLoopback is whether a distro in networking mode mode reaches
+// Windows at 127.0.0.1: mirrored, consomme or virtioproxy. The WSL
+// runner is gone, so this is all that is left of it.
+func wslHostLoopback(mode string) bool {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case "mirrored", "consomme", "virtioproxy":
+		return true
+	}
+	return false
+}
+
+// wslHostAt is Windows as a distro in networking mode mode reaches it,
+// from its default route and the networks Windows has an address on:
+// "" where its 127.0.0.1 is Windows', the route where it is Windows'
+// own (NAT's) or in no one network, else Windows' address on the one
+// network the route is in (a bridged distro's default route is the LAN's
+// router, while Windows is at its address on the bridge). The WSL runner
+// is gone, so this is all that is left of it.
+func wslHostAt(mode, route string, nets []*net.IPNet) string {
+	if wslHostLoopback(mode) {
+		return ""
+	}
+	ip := net.ParseIP(route)
+	if ip == nil {
+		return route
+	}
+	var in []*net.IPNet
+	for _, n := range nets {
+		if n.IP.Equal(ip) {
+			return route // Windows' own: NAT's
+		}
+		if n.Contains(ip) {
+			in = append(in, n)
+		}
+	}
+	if len(in) == 1 {
+		return in[0].IP.String()
+	}
+	return route
+}
+
 func (d *distro) mirror(cfg string) {
-	d.Mirrored = wslrun.HostLoopback(d.Net) || d.Net == "" && wslMirrored(cfg)
-	d.noRelay = d.Net != "mirrored" && wslrun.HostLoopback(d.Net) && wslOff(cfg, "localhostForwarding")
+	d.Mirrored = wslHostLoopback(d.Net) || d.Net == "" && wslMirrored(cfg)
+	d.noRelay = d.Net != "mirrored" && wslHostLoopback(d.Net) && wslOff(cfg, "localhostForwarding")
 }
 
 // notMirrored is the notice of an agent in a distro not known to be in
@@ -398,7 +438,7 @@ func (d distro) base() string {
 // host is Windows as the distro reaches it: Gateway, or under NAT the WSL
 // via (gateway.WSLVia) where a firewall keeps WSL off Gateway (wslFindVia).
 func (d distro) host() string {
-	if d.Gateway == "" || d.Net == "bridged" || wslrun.HostLoopback(d.Net) || !gateway.OnWSLNet(d.Gateway) {
+	if d.Gateway == "" || d.Net == "bridged" || wslHostLoopback(d.Net) || !gateway.OnWSLNet(d.Gateway) {
 		return d.Gateway
 	}
 	if v := gateway.WSLVia(); len(v) > 0 {
@@ -2129,10 +2169,10 @@ func parseProbe(name, out string) *distro {
 	// Windows' own next hop (consomme: 198.18.0.2 under a TUN proxy,
 	// #1230), not Windows: an agent left on it is moved to 127.0.0.1
 	// (wslMovedFrom). A bridged distro's is the LAN's router: Windows is
-	// at its address on the bridge's adapter (wslrun.HostAt), and an agent
+	// at its address on the bridge's adapter (wslHostAt), and an agent
 	// an older magpie pointed at the router is written over on the next
 	// sync, the router being among the addresses it was seen at (Was)
-	d.Gateway = wslrun.HostAt(d.Net, d.Gateway, gateway.WSLNets())
+	d.Gateway = wslHostAt(d.Net, d.Gateway, gateway.WSLNets())
 	return d
 }
 
@@ -2446,7 +2486,7 @@ func wslViaLeft(via string) {
 	wsl.Lock()
 	defer wsl.Unlock()
 	for _, d := range wsl.seen {
-		if d == nil || d.Gateway == "" || d.Net == "bridged" || wslrun.HostLoopback(d.Net) || slices.Contains(d.Was, via) {
+		if d == nil || d.Gateway == "" || d.Net == "bridged" || wslHostLoopback(d.Net) || slices.Contains(d.Was, via) {
 			continue
 		}
 		d.Was = append(d.Was, via)

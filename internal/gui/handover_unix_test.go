@@ -20,7 +20,7 @@ import (
 
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/provider"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // successorEnv has this test binary, started again, play the new magpie
@@ -34,7 +34,7 @@ func TestHandoverSuccessor(t *testing.T) {
 	if os.Getenv(successorEnv) == "" {
 		t.Skip("the new magpie of TestRestartHandsTheGatewayOver")
 	}
-	exe, err := update.Executable()
+	exe, err := sysutil.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func handoverSandbox(t *testing.T, up string) *gateway.Server {
 	t.Setenv("MAGPIE_NO_HANDOVER", "")
 	oldExe, oldHello, oldAck := startExe, helloWait, ackWait
 	oldStart, oldRelaunch := startBeside, relaunchBinary
-	exe, err := update.Executable()
+	exe, err := sysutil.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -323,6 +323,16 @@ func TestHandoverNotMadeRestartsAsBeforeOnceIdle(t *testing.T) {
 			}
 		})
 	}
+}
+
+func eventually(t *testing.T, what string, ok func() bool) {
+	t.Helper()
+	for deadline := time.Now().Add(3 * time.Second); time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
+		if ok() {
+			return
+		}
+	}
+	t.Fatal(what)
 }
 
 func eventually2(t *testing.T, most time.Duration, what string, ok func() bool) {

@@ -10,7 +10,7 @@ import (
 	"github.com/yetone/magpie/internal/appdir"
 	"github.com/yetone/magpie/internal/codexrelay"
 	"github.com/yetone/magpie/internal/gateway"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // magpie data: where magpie keeps its files, and moving them to another
@@ -110,7 +110,7 @@ func movePending() {
 	if !appdir.MoveAsked() {
 		return
 	}
-	update.AwaitPredecessor()
+	sysutil.AwaitPredecessor()
 	if gatewayUp() {
 		fmt.Fprintln(os.Stderr, "magpie: its folders move when no other magpie is running")
 		return

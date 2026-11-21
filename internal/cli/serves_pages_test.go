@@ -10,7 +10,7 @@ func TestServesPages(t *testing.T) {
 			t.Errorf("%q serves no pages, want it to", args)
 		}
 	}
-	for _, args := range [][]string{{"plugin", "update"}, {"plugin", "list"}, {"plugin", "add", "x"}, {"claude"}, {"daemon", "install"}, {"autostart"}, {"providers"}} {
+	for _, args := range [][]string{{"plugin", "update"}, {"plugin", "list"}, {"plugin", "add", "x"}, {"claude"}, {"daemon", "install"}, {"providers"}} {
 		if servesPages(args) {
 			t.Errorf("%q serves pages, want it not to", args)
 		}

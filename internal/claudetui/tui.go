@@ -40,7 +40,6 @@ import (
 	"github.com/yetone/magpie/internal/appdir"
 	"github.com/yetone/magpie/internal/bridgesid"
 	"github.com/yetone/magpie/internal/lazyre"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
 // ReadyWait is how long Claude Code may take to show its prompt before
@@ -1459,7 +1458,25 @@ func (s *shim) path(path string) string {
 	if s.wsl == nil {
 		return path
 	}
-	return wslrun.Tool{Mount: s.wsl.Mount}.Linux(path)
+	return wslLinuxPath(s.wsl.Mount, path)
+}
+
+// wslLinuxPath is a Windows path as a WSL distro spells it: the mount of
+// its drive, then the drive letter lowered and the rest. The WSL runner
+// is gone, so this is all that is left of it.
+func wslLinuxPath(mount, path string) string {
+	if mount == "" {
+		mount = "/mnt/"
+	}
+	if len(path) >= 2 && path[1] == ':' {
+		drive := strings.ToLower(path[:1])
+		rest := strings.ReplaceAll(path[2:], `\`, "/")
+		if !strings.HasPrefix(rest, "/") {
+			rest = "/" + rest
+		}
+		return strings.TrimSuffix(mount, "/") + "/" + drive + rest
+	}
+	return path
 }
 
 // pasteImage pastes an image file's path, and waits for the prompt to show

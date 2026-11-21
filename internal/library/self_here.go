@@ -22,11 +22,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // selfExe is this magpie by a path that stays put; a var for tests.
-var selfExe = update.Program
+var selfExe = sysutil.Program
 
 // ownServer is whether s is magpie's own: `mcp …` run by a magpie binary,
 // this computer's or another's.

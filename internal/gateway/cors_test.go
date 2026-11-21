@@ -249,7 +249,6 @@ func TestForeignPagesRefused(t *testing.T) {
 		{"POST", "/_magpie/claude-mcp/tok", `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`},
 		{"POST", provider.RemoteRefreshPath, ""},
 		{"POST", provider.RemoteCodexResetPath + "?user=me@example.com", ""},
-		{"POST", provider.RemoteUpdatePath + "?version=v0.1.9999", ""},
 		{"GET", "/v1/magpie/quotas", ""},
 		{"GET", "/v1/models", ""},
 		{"OPTIONS", "/v1/chat/completions", ""},
@@ -295,10 +294,6 @@ func TestForeignPagesRefused(t *testing.T) {
 		if w := do(chat, c.origin, c.host, c.remote, c.key); w.Code != 200 || !strings.Contains(w.Body.String(), "ok") {
 			t.Errorf("%q to %s: %d %s", c.origin, c.host, w.Code, w.Body)
 		}
-	}
-	// usemagpie.ai still reads the Omarchy theme, and only that
-	if w := do(call{"GET", "/v1/magpie/omarchy", ""}, "https://usemagpie.ai", "127.0.0.1:3425", loop, ""); w.Code == http.StatusForbidden {
-		t.Errorf("usemagpie.ai's Omarchy theme: %d %s", w.Code, w.Body)
 	}
 }
 

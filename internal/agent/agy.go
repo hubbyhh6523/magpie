@@ -32,7 +32,7 @@ package agent
 // So that typing agy just works (bestony on Discord: the command was
 // copied at each start), magpie puts a function named agy in the profile
 // of each shell the user has, between "# >>> magpie agy >>>" and
-// "# <<< magpie agy <<<" (update.ShellFunction), while agy is on one of
+// "# <<< magpie agy <<<" (sysutil.ShellFunction), while agy is on one of
 // magpie's models. It runs `magpie agy run`, which starts the real agy
 // with the two variables and --model when settings.json's model is still
 // magpie's and as it is otherwise (cli/agy_cli.go); PowerShell's asks
@@ -56,7 +56,7 @@ import (
 	"github.com/yetone/magpie/internal/edit"
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/provider"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 const agyModels = "customModelsConfig.customModels"
@@ -102,9 +102,9 @@ func agyShell(home string, on bool) {
 		return
 	}
 	if on {
-		update.ShellFunction("agy", agyFunction)
+		sysutil.ShellFunction("agy", agyFunction)
 	} else {
-		update.DropShellFunction("agy")
+		sysutil.DropShellFunction("agy")
 	}
 }
 
@@ -151,10 +151,10 @@ const agyPosixHead = "unalias agy 2>/dev/null || true\nagy() {\n"
 // user's login shell in the distro's /etc/passwd (bash when it says
 // nothing) made where it isn't, as fish's is where ~/.config/fish is. The
 // distro's ZDOTDIR and XDG_CONFIG_HOME aren't read.
-func agyDistroProfiles(at place) []update.ShellProfile {
+func agyDistroProfiles(at place) []sysutil.ShellProfile {
 	login := distroLoginShell(at)
 	fish := at.join(".config", "fish", "config.fish")
-	return []update.ShellProfile{
+	return []sysutil.ShellProfile{
 		{Kind: "posix", Path: at.join(".bashrc"), Create: login == "bash"},
 		{Kind: "posix", Path: at.join(".zshrc"), Create: login == "zsh"},
 		{Kind: "fish", Path: fish, Create: login == "fish" || at.isDir(filepath.Dir(fish))},
@@ -338,16 +338,16 @@ func agyIn(at place) *Agent {
 		}
 		if on {
 			k, g := key(), gw()
-			update.ShellFunctionAt(agyDistroProfiles(at), "agy", func(kind string) string { return agyDistroFunction(kind, k, g) })
+			sysutil.ShellFunctionAt(agyDistroProfiles(at), "agy", func(kind string) string { return agyDistroFunction(kind, k, g) })
 		} else {
-			update.DropShellFunctionAt(agyDistroProfiles(at), "agy")
+			sysutil.DropShellFunctionAt(agyDistroProfiles(at), "agy")
 		}
 	}
 	shellIn := func() []string {
 		if !distro {
-			return update.ShellFunctionIn("agy")
+			return sysutil.ShellFunctionIn("agy")
 		}
-		return update.ShellFunctionInAt(agyDistroProfiles(at), "agy")
+		return sysutil.ShellFunctionInAt(agyDistroProfiles(at), "agy")
 	}
 	launch := func(model string) string {
 		if !distro {
@@ -403,7 +403,7 @@ func agyIn(at place) *Agent {
 					if distro {
 						in[i] = at.native(in[i])
 					} else {
-						in[i] = update.TildeHome(in[i])
+						in[i] = sysutil.TildeHome(in[i])
 					}
 				}
 				return noticeAgyTyped.say("profiles", strings.Join(in, ", "), "command", launch(v))

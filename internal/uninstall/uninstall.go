@@ -28,7 +28,6 @@ import (
 
 	"github.com/yetone/magpie/internal/agent"
 	"github.com/yetone/magpie/internal/appdir"
-	"github.com/yetone/magpie/internal/autostart"
 	"github.com/yetone/magpie/internal/claudecode"
 	"github.com/yetone/magpie/internal/daemon"
 	"github.com/yetone/magpie/internal/library"
@@ -36,7 +35,7 @@ import (
 	"github.com/yetone/magpie/internal/proc"
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/shortcut"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // Done is one thing uninstalling did, or couldn't.
@@ -85,11 +84,11 @@ var (
 		}
 		return err
 	}
-	autostartOff   = func() error { return autostart.Set(false) }
+	autostartOff   = func() error { return nil }
 	removeShortcut = shortcut.Remove
 	removeScheme   = unregisterScheme
 	endPII         = pii.Remove
-	forgetInstall  = update.ForgetInstallDir
+	forgetInstall  = sysutil.ForgetInstallDir
 	executable     = os.Executable
 	wired          = (*agent.Agent).Wired
 	disconnectOne  = disconnect
@@ -319,7 +318,7 @@ func KeepData(ctx context.Context) *Report {
 // magpie's files: what the app starts as it quits.
 func AfterExit(pid int, wait time.Duration) *Report {
 	until := time.Now().Add(wait)
-	for update.Alive(pid) && time.Now().Before(until) {
+	for sysutil.Alive(pid) && time.Now().Before(until) {
 		time.Sleep(200 * time.Millisecond)
 	}
 	r := &Report{}

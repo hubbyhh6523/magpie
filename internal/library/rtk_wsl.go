@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/yetone/magpie/internal/agent"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
 // RTK for an agent in a WSL distro (lex on Discord: Claude Code in WSL
@@ -109,8 +108,11 @@ func rtkWSLLive(a *agent.Agent) bool {
 	return a.Home != "" && agent.WSLRunning(a.WSL)
 }
 
-// rtkWSLRun runs wsl.exe with args; a var for tests.
-var rtkWSLRun = wslrun.Run
+// rtkWSLRun runs wsl.exe with args; a var for tests. WSL is gone, so it
+// always fails.
+var rtkWSLRun = func(_ time.Duration, _ ...string) ([]byte, error) {
+	return nil, errors.New("WSL is gone: magpie can't run wsl.exe any more")
+}
 
 // rtkWSLProbe prints where rtk is in the distro: on the PATH of a login
 // shell, or an interactive one's (where .bashrc puts it), "on:1"; else

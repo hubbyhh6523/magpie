@@ -9,7 +9,6 @@ import (
 
 	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
 // leanRun is what a run of a leanHarness was started with and told (its
@@ -146,18 +145,6 @@ func TestClaudeLeanPromptRunNotResumedAcrossTheSetting(t *testing.T) {
 	}
 	if r := told(t, got, "turn-three"); r.hasSys {
 		t.Fatalf("the turn after the setting went off was told a lean run:\n%s", r.log)
-	}
-}
-
-// A Claude Code in WSL reads the system prompt file under the distro's
-// mount of the drive.
-func TestClaudeLeanPromptFileInWSL(t *testing.T) {
-	c := claudeCLI{wsl: &wslrun.Tool{Path: "/usr/bin/claude"}}
-	if got := c.file(`C:\Users\me\AppData\Local\Temp\magpie-claude-1\system.md`); got != "/mnt/c/Users/me/AppData/Local/Temp/magpie-claude-1/system.md" {
-		t.Fatalf("%q", got)
-	}
-	if got := (claudeCLI{}).file("/tmp/x/system.md"); got != "/tmp/x/system.md" {
-		t.Fatalf("%q", got)
 	}
 }
 

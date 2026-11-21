@@ -4,16 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"log"
-	"os"
-	"path/filepath"
 	"runtime"
-	"slices"
 	"strings"
 	"testing"
 
-	"github.com/yetone/magpie/internal/claudetui"
 	"github.com/yetone/magpie/internal/settings"
-	"github.com/yetone/magpie/internal/wslrun"
 )
 
 // A Claude run is Claude Code's interactive mode on macOS, Linux and
@@ -39,8 +34,6 @@ func TestClaudeTUIChosen(t *testing.T) {
 	}{
 		{"a plain turn", &Request{Messages: text("hi")}, here, false, on, ""},
 		{"turned off", &Request{Messages: text("hi")}, here, true, false, "the interactive mode is turned off"},
-		{"in WSL", &Request{Messages: text("hi")}, claudeCLI{path: "claude", wsl: &wslrun.Tool{Distro: "Ubuntu", Home: "/home/me"}}, false, on, ""},
-		{"in WSL, its home unknown", &Request{Messages: text("hi")}, claudeCLI{path: "claude", wsl: &wslrun.Tool{Distro: "Ubuntu"}}, false, on, ""},
 		{"safeguards", &Request{Messages: text("hi"), Safeguards: json.RawMessage(`{"a":1}`)}, here, false, on, ""},
 		{"client cache marks", &Request{Messages: text("hi"), clientCache: &clientCache{}}, here, false, on, ""},
 		{"a schema", &Request{Messages: text("hi"), Format: &Format{Type: "json_schema", Schema: json.RawMessage(`{"type":"object"}`)}}, here, false, on, ""},
@@ -83,61 +76,8 @@ func TestClaudeTUIFallbackLogged(t *testing.T) {
 	}
 }
 
-// A Claude Code in WSL is run by the helper through wsl.exe, its
-// transcripts read from Windows: the distro's own folder through \\wsl$,
-// or the account's config directory, a Windows folder. Where Windows
-// can't read the distro's folder (no 9P redirector, as over ssh), or the
-// probe didn't find its home, the helper reads the transcript inside the
-// distro, never refusing the run; an account's folder is never asked
-// about.
-func TestClaudeTUIWSL(t *testing.T) {
-	var asked []string
-	readable := true
-	old := wslStat
-	wslStat = func(p string) (os.FileInfo, error) {
-		asked = append(asked, p)
-		if readable {
-			return nil, nil
-		}
-		return nil, os.ErrNotExist
-	}
-	t.Cleanup(func() { wslStat = old })
-	tool := wslrun.Tool{Distro: "Ubuntu", Path: "/home/me/.local/bin/claude", Home: "/home/me", Mount: "/mnt/"}
-	homeless := tool
-	homeless.Home = ""
-	for _, tc := range []struct {
-		name             string
-		tool             wslrun.Tool
-		readable         bool
-		configDir        string
-		projects, distro string
-		asked            []string
-	}{
-		{"its own folder", tool, true, "", `\\wsl$\Ubuntu\home\me\.claude\projects`, "", []string{`\\wsl$\Ubuntu\home\me`}},
-		{"an account's", tool, false, filepath.Join("acct", "1"), filepath.Join("acct", "1", "projects"), "", nil},
-		{"its own folder, unread", tool, false, "", "", "Ubuntu", []string{`\\wsl$\Ubuntu\home\me`}},
-		{"its home unknown", homeless, true, "", "", "Ubuntu", nil},
-	} {
-		asked, readable = nil, tc.readable
-		c := claudeCLI{path: "claude", wsl: &tc.tool}
-		var w claudetui.WSL
-		if err := json.Unmarshal([]byte(c.tuiWSL(tc.configDir)), &w); err != nil {
-			t.Fatal(err)
-		}
-		if w.Projects != tc.projects || w.Distro != tc.distro || w.Mount != "/mnt/" || !slices.Equal(asked, tc.asked) {
-			t.Fatalf("%s: %+v, asked %q", tc.name, w, asked)
-		}
-		if len(w.Args) < 2 || w.Args[0] != "-d" || w.Args[1] != "Ubuntu" || w.Args[len(w.Args)-1] != tool.Path {
-			t.Fatalf("%s: args %q", tc.name, w.Args)
-		}
-		if code, why := claudeMachineWhy(c); code == "wsl-home" {
-			t.Fatalf("%s: every run refused: %s", tc.name, why)
-		}
-	}
-}
-
 // The provider page's codes for why every run is -p: the setting, none
-// found; "" for the TUI, a WSL Claude Code whose home is unknown too.
+// found; "" for the TUI.
 func TestClaudeMachineWhy(t *testing.T) {
 	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" && runtime.GOOS != "windows" {
 		t.Skip("no interactive mode on " + runtime.GOOS)
@@ -154,9 +94,7 @@ func TestClaudeMachineWhy(t *testing.T) {
 		code   string
 	}{
 		{"here", here, false, ""},
-		{"in WSL", claudeCLI{wsl: &wslrun.Tool{Distro: "Ubuntu", Home: "/home/me"}}, false, ""},
 		{"turned off", here, true, "off"},
-		{"in WSL, its home unknown", claudeCLI{wsl: &wslrun.Tool{Distro: "Ubuntu"}}, false, ""},
 		{"none", claudeCLI{}, false, "missing"},
 	} {
 		st := settings.Load()

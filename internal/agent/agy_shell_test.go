@@ -10,7 +10,7 @@ import (
 
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/provider"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // Typing agy just works (bestony on Discord): picking one of magpie's
@@ -42,7 +42,7 @@ func TestAgyShell(t *testing.T) {
 	if err := a.Apply("model", "magpie/deepseek/pro"); err != nil {
 		t.Fatal(err)
 	}
-	in := update.ShellFunctionIn("agy")
+	in := sysutil.ShellFunctionIn("agy")
 	if len(in) == 0 {
 		t.Fatal("no shell's profile has agy")
 	}
@@ -72,7 +72,7 @@ func TestAgyShell(t *testing.T) {
 	if err := a.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	if got := update.ShellFunctionIn("agy"); strings.Join(got, ",") != strings.Join(in, ",") {
+	if got := sysutil.ShellFunctionIn("agy"); strings.Join(got, ",") != strings.Join(in, ",") {
 		t.Fatalf("after Sync: %v, want %v", got, in)
 	}
 
@@ -90,7 +90,7 @@ func TestAgyShell(t *testing.T) {
 	}
 	// and a start off magpie doesn't give it again
 	a.Sync()
-	if got := update.ShellFunctionIn("agy"); len(got) != 0 {
+	if got := sysutil.ShellFunctionIn("agy"); len(got) != 0 {
 		t.Fatalf("Sync off magpie: %v", got)
 	}
 }

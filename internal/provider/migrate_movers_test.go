@@ -2,13 +2,9 @@ package provider
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/yetone/magpie/internal/qoder"
 )
 
 // roundTrip moves id's saved accounts out as the plugin keeps them and back
@@ -79,57 +75,6 @@ func authOf(t *testing.T, v any) json.RawMessage {
 		t.Fatal(err)
 	}
 	return b
-}
-
-func TestQoderMover(t *testing.T) {
-	c1 := qoder.Credential{UID: "u1", Email: "a@q.com", Name: "A", Token: "t1", RefreshToken: "r1", DeviceToken: "d1", DeviceRefresh: "dr1", ExpiresAt: 1_900_000_000_123, MachineID: "m1", Models: json.RawMessage(`[{"id":"x"}]`)}
-	c2 := qoder.Credential{UID: "u2", Token: "t2", RefreshToken: "r2", DeviceToken: "d2", ExpiresAt: 1_900_000_000_456, MachineID: "m2"}
-	roundTrip(t, "qoder", []savedLogin{
-		{Agent: "qoder", User: "a@q.com", First: true, On: true, Auth: authOf(t, c1), Lapsed: "expired"},
-		{Agent: "qoder", User: "u2", Auth: authOf(t, c2)},
-	}, func(t *testing.T, a, b savedLogin) {
-		ca, _ := qoderSaved(a)
-		cb, _ := qoderSaved(b)
-		if string(cb.Models) == "" {
-			cb.Models = ca.Models // a new entry: the model list is the built-in's own cache
-		}
-		if !reflect.DeepEqual(ca, cb) {
-			t.Fatalf("qoder %s: %+v, want %+v", a.User, cb, ca)
-		}
-	})
-}
-
-// A Qoder account still in the single-account qoder.json of before
-// logins.json moves too: the move reads it into logins.json first, with a
-// machine id of its own, and the old file is gone.
-func TestQoderLegacyFileMoves(t *testing.T) {
-	claudeHome(t)
-	legacy := filepath.Join(filepath.Dir(Path()), "qoder.json")
-	writeFile(t, legacy, qoder.Credential{UID: "u1", Email: "one@q.com", Token: "t1", RefreshToken: "r1"})
-	accts, err := movers["qoder"].out()
-	if err != nil || len(accts) != 1 || accts[0].User != "one@q.com" || !accts[0].First || accts[0].Auth["machineId"] == "" {
-		t.Fatalf("the legacy account didn't move: %+v %v", accts, err)
-	}
-	if _, err := os.Stat(legacy); !os.IsNotExist(err) {
-		t.Fatalf("qoder.json is still there: %v", err)
-	}
-}
-
-// A Qoder CN account keeps its site, and one that chats on its device
-// token keeps doing so.
-func TestQoderCNMover(t *testing.T) {
-	c1 := qoder.Credential{Site: QoderCNID, UID: "u1", Email: "a@q.cn", Token: "d1", RefreshToken: "dr1", DeviceToken: "d1", DeviceRefresh: "dr1", DeviceChat: true, ExpiresAt: 1_900_000_000_123, MachineID: "m1"}
-	c2 := qoder.Credential{Site: QoderCNID, UID: "u2", Token: "t2", RefreshToken: "r2", DeviceToken: "d2", ExpiresAt: 1_900_000_000_456, MachineID: "m2"}
-	roundTrip(t, QoderCNID, []savedLogin{
-		{Agent: QoderCNID, User: "a@q.cn", First: true, On: true, Auth: authOf(t, c1)},
-		{Agent: QoderCNID, User: "u2", Auth: authOf(t, c2)},
-	}, func(t *testing.T, a, b savedLogin) {
-		ca, _ := qoderSaved(a)
-		cb, _ := qoderSaved(b)
-		if !reflect.DeepEqual(ca, cb) {
-			t.Fatalf("qoder-cn %s: %+v, want %+v", a.User, cb, ca)
-		}
-	})
 }
 
 func TestFactoryMover(t *testing.T) {

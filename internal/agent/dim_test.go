@@ -10,7 +10,7 @@ import (
 
 	"github.com/yetone/magpie/internal/gateway"
 	"github.com/yetone/magpie/internal/provider"
-	"github.com/yetone/magpie/internal/update"
+	"github.com/yetone/magpie/internal/sysutil"
 )
 
 // With no Dim daemon to reach, Dim alpha is started on magpie through the
@@ -84,7 +84,7 @@ func TestDim(t *testing.T) {
 	}
 	// the function dima is in the user's shells (zsh's on macOS, where it
 	// is always there), and the notice says to type it
-	in := update.ShellFunctionIn("dima")
+	in := sysutil.ShellFunctionIn("dima")
 	if runtime.GOOS == "darwin" && !slices.Contains(in, zshrc) {
 		t.Fatalf("function in %v", in)
 	}
@@ -117,8 +117,8 @@ func TestDim(t *testing.T) {
 	if _, err := os.Stat(dimFile()); !os.IsNotExist(err) {
 		t.Fatalf("dim.json kept: %v", err)
 	}
-	if update.ShellFunctionIn("dima") != nil {
-		t.Fatalf("function kept in %v", update.ShellFunctionIn("dima"))
+	if sysutil.ShellFunctionIn("dima") != nil {
+		t.Fatalf("function kept in %v", sysutil.ShellFunctionIn("dima"))
 	}
 	if b, _ := os.ReadFile(zshrc); string(b) != "export A=1\n" {
 		t.Fatalf(".zshrc after:\n%s", b)

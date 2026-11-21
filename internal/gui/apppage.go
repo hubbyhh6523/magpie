@@ -127,6 +127,13 @@ type appWebHost struct {
 
 func (a appWebHost) MainShown() bool { return mainShown(a.app) }
 
+// mainShown says whether the app's window is up, for a restart asked for
+// from the panel to bring it back.
+func mainShown(w Windows) bool {
+	s, ok := w.(interface{ MainShown() bool })
+	return ok && s.MainShown()
+}
+
 // appPage is the app's page served to a browser: listening where
 // web-page.json says, or trying again every appPageRetry while another
 // program (magpie web, the magpie before a restart to update) has the port.

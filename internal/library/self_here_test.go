@@ -88,22 +88,22 @@ func TestOwnServerFromElsewhereRunsThisMagpie(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			seedLibrary(t, Server{Name: selfServerName, Transport: "stdio", Command: stored, Args: []string{"mcp", "image"}, Agents: []string{"codex"}})
+			seedLibrary(t, Server{Name: "magpie-image", Transport: "stdio", Command: stored, Args: []string{"mcp", "image"}, Agents: []string{"codex"}})
 
 			// the page and the check read it as this computer's
 			v, err := load()
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := v.server(selfServerName).Command; got != here {
+			if got := v.server("magpie-image").Command; got != here {
 				t.Fatalf("read as %q, want this magpie %q", got, here)
 			}
 			// the agents are given it, and library.json keeps it
 			ok(t)(Sync())
-			if got := codexCommand(t, h, selfServerName); got != here {
+			if got := codexCommand(t, h, "magpie-image"); got != here {
 				t.Errorf("Codex starts %q, want %q", got, here)
 			}
-			if got := storedCommand(t, selfServerName); got != here {
+			if got := storedCommand(t, "magpie-image"); got != here {
 				t.Errorf("library.json keeps %q, want %q", got, here)
 			}
 			// and once it is, a sync has nothing to write
@@ -159,7 +159,7 @@ func TestCarriedOwnServerIsEachComputersMagpie(t *testing.T) {
 	write(t, mac, "")
 	write(t, win, "")
 	own := func(cmd string) Server {
-		return Server{Name: selfServerName, Transport: "stdio", Command: cmd, Args: []string{"mcp", "image"}, Agents: []string{"codex"}}
+		return Server{Name: "magpie-image", Transport: "stdio", Command: cmd, Args: []string{"mcp", "image"}, Agents: []string{"codex"}}
 	}
 	user := Server{Name: "fs", Transport: "stdio", Command: "npx", Args: []string{"-y", "@mcp/fs"}, Agents: []string{"codex"}}
 
@@ -179,7 +179,7 @@ func TestCarriedOwnServerIsEachComputersMagpie(t *testing.T) {
 		t.Fatalf("one library carried two ways:\n%s\n%s", a, b)
 	}
 	for _, s := range onMac.MCP {
-		if s.Name == selfServerName && s.Command != magpieCommand {
+		if s.Name == "magpie-image" && s.Command != magpieCommand {
 			t.Errorf("carried as %q, want %q", s.Command, magpieCommand)
 		}
 		if s.Name == "fs" && s.Command != "npx" {
@@ -189,10 +189,10 @@ func TestCarriedOwnServerIsEachComputersMagpie(t *testing.T) {
 
 	// the Mac's bundle put on Windows runs Windows' magpie
 	ok(t)(Put(onMac))
-	if got := storedCommand(t, selfServerName); got != win {
+	if got := storedCommand(t, "magpie-image"); got != win {
 		t.Errorf("library.json keeps %q, want %q", got, win)
 	}
-	if got := codexCommand(t, h, selfServerName); got != win {
+	if got := codexCommand(t, h, "magpie-image"); got != win {
 		t.Errorf("Codex starts %q, want %q", got, win)
 	}
 	if again, _ := Collect(); mustJSON(t, again) != mustJSON(t, onMac) {
@@ -201,9 +201,9 @@ func TestCarriedOwnServerIsEachComputersMagpie(t *testing.T) {
 
 	// a bundle from a magpie before #1439, with the Mac's path in it
 	old := *onMac
-	old.MCP = []*Server{{Name: selfServerName, Transport: "stdio", Command: "/Volumes/gone-1439/Magpie.app/Contents/MacOS/magpie", Args: []string{"mcp", "image"}, Agents: []string{"codex"}}}
+	old.MCP = []*Server{{Name: "magpie-image", Transport: "stdio", Command: "/Volumes/gone-1439/Magpie.app/Contents/MacOS/magpie", Args: []string{"mcp", "image"}, Agents: []string{"codex"}}}
 	ok(t)(Put(&old))
-	if got := codexCommand(t, h, selfServerName); got != win {
+	if got := codexCommand(t, h, "magpie-image"); got != win {
 		t.Errorf("an old bundle: Codex starts %q, want %q", got, win)
 	}
 }

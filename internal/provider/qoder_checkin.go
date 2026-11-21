@@ -34,6 +34,9 @@ import (
 	"github.com/yetone/magpie/internal/settings"
 )
 
+// QoderCNID is the Qoder CN subscription's id.
+const QoderCNID = "qoder-cn"
+
 // qoderCampaignURLs are the campaigns of each site, by the plugin's
 // provider; a claim is …/{id}/claim.
 var qoderCampaignURLs = map[string]string{

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/yetone/magpie/internal/uninstall"
@@ -35,6 +36,15 @@ func postTo(mux http.Handler, path string) *httptest.ResponseRecorder {
 	mux.ServeHTTP(rec, httptest.NewRequest("POST", path, nil))
 	return rec
 }
+
+// quitCount is a Windows that counts quits, for tests.
+type quitCount struct {
+	Windows
+	quits atomic.Int32
+}
+
+func (q *quitCount) Quit()           { q.quits.Add(1) }
+func (q *quitCount) MainShown() bool { return false }
 
 // Uninstall from the app disconnects every agent after the service is
 // gone, and says what it did; magpie's files go only on Finish, once the

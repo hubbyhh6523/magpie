@@ -112,7 +112,6 @@ func keyedCaller(r *http.Request) bool {
 // request's own origin (a page served at the address the request names,
 // such as magpie's web app on a LAN address), so a browser sent it for a
 // site elsewhere. usemagpie.ai may still read the Omarchy theme
-// (omarchyTheme).
 //
 // Only http and https are judged. A scheme only an app or an extension
 // can send — app://, file://, tauri://, vscode-webview://,
@@ -145,9 +144,6 @@ func foreignPage(r *http.Request, origin string) bool {
 		return false
 	}
 	if hostPort(u.Host, scheme) == hostPort(r.Host, scheme) {
-		return false
-	}
-	if r.URL.Path == "/v1/magpie/omarchy" && siteOrigin(origin) {
 		return false
 	}
 	return true
