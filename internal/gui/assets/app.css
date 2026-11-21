@@ -2690,6 +2690,10 @@ body .foot .status.lift { white-space: normal; overflow-wrap: anywhere; text-ove
 .pop li.reset .ic { opacity: .75; }
 .pop li.custom .v { color: var(--fg); }
 .pop li.custom .n { color: var(--muted); }
+/* a routing group no provider serves now: in its section, greyed, with why */
+.pop li.unserved { cursor: default; }
+.pop li.unserved .v, .pop li.unserved .ic { opacity: .5; }
+.pop li.unserved.sel { background: transparent; }
 /* the models on the agent's own account through magpie, folded into one
    row (#496): a chevron says it opens, turned down while open */
 .pop li.fold .v { color: var(--muted); }
@@ -3643,14 +3647,15 @@ body.window .ag-sk-icon { width: 22px; height: 22px; border-radius: 6px; }
 .sheet .kind { display: flex; align-items: baseline; gap: 8px; padding: 22px 8px 6px; font-size: 12px; }
 .sheet .kind b { font-size: 13px; font-weight: 600; color: var(--fg); }
 .sheet .kind span { color: var(--faint); }
-/* Partners' heading row: the heading, and at its end the way to join them */
+/* Partners' heading row, in the add sheet and on Discover (plugins.js):
+   the heading, and at its end the way to join them */
 .sheet .kind-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 12px; }
-.sheet .sponsor-me { display: inline-flex; align-items: center; gap: 5px; height: 22px; margin: 0 8px 0 auto; padding: 0 9px 0 8px; border: 1px solid var(--line); border-radius: 11px; background: var(--card); color: var(--fg-2); font: inherit; font-size: 12px; line-height: 1; white-space: nowrap; cursor: pointer; transition: color .15s ease, border-color .15s ease, transform .12s cubic-bezier(.23, 1, .32, 1); }
-.sheet .sponsor-me svg { flex: none; color: var(--accent); }
-.sheet .sponsor-me:active { transform: scale(.97); }
-.sheet .sponsor-me:focus-visible { outline: none; border-color: var(--accent); color: var(--fg); }
+.sheet .sponsor-me, .pm-partners .sponsor-me { display: inline-flex; align-items: center; gap: 5px; height: 22px; margin: 0 8px 0 auto; padding: 0 9px 0 8px; border: 1px solid var(--line); border-radius: 11px; background: var(--card); color: var(--fg-2); font: inherit; font-size: 12px; line-height: 1; white-space: nowrap; cursor: pointer; transition: color .15s ease, border-color .15s ease, transform .12s cubic-bezier(.23, 1, .32, 1); }
+.sheet .sponsor-me svg, .pm-partners .sponsor-me svg { flex: none; color: var(--accent); }
+.sheet .sponsor-me:active, .pm-partners .sponsor-me:active { transform: scale(.97); }
+.sheet .sponsor-me:focus-visible, .pm-partners .sponsor-me:focus-visible { outline: none; border-color: var(--accent); color: var(--fg); }
 @media (hover: hover) and (pointer: fine) {
-  .sheet .sponsor-me:hover { color: var(--fg); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .sheet .sponsor-me:hover, .pm-partners .sponsor-me:hover { color: var(--fg); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 }
 /* Partners' light (shinePartners): a hairline runs once round the heading
    and, together, round the partners' tiles below it, each over a breath of
@@ -3696,6 +3701,12 @@ body.window .ag-sk-icon { width: 22px; height: 22px; border-radius: 6px; }
 .tile .nm { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; font-size: 13px; }
 .tile .n { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile .nm .badge { flex: none; }
+/* a partner's row carries its tagline on a second, quieter line */
+.tile.two { height: 46px; }
+.tile.two .ic { width: 22px; height: 22px; }
+.tile .col { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tile .sub { min-width: 0; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet .grid:has(> .tile.two) { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 2px 12px; }
 .tile .have { flex: none; width: 6px; height: 6px; border-radius: 3px; background: var(--green); }
 .tile .cnt { flex: none; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .sheet .row-head .custom { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); }
@@ -4280,6 +4291,10 @@ body.panel #find { display: none; }
 .feat-say { margin: 2px 4px 10px; font-size: 12px; line-height: 1.45; color: var(--muted); }
 .set-searching .feat-say { display: none; }
 .row.pref .sub.feat-why { color: var(--muted); font-size: 11px; }
+/* a link that starts its line sits flush with the name and the words above
+   it, its padding out to the left; one after a word or a warning keeps it
+   (every word a line starts with is an element: plugins/search/settings.js) */
+.feat-go > .link:first-child { margin-left: -4px; }
 /* the local model's row says a download, a device or an error in full */
 #privacyModelRow .val { gap: 8px; }
 #privacyModelRow .sub { white-space: normal; overflow-wrap: anywhere; }

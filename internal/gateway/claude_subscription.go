@@ -67,6 +67,7 @@ import (
 	"github.com/yetone/magpie/internal/claudecode"
 	"github.com/yetone/magpie/internal/claudetui"
 	"github.com/yetone/magpie/internal/edit"
+	"github.com/yetone/magpie/internal/egress"
 	"github.com/yetone/magpie/internal/lazyre"
 	"github.com/yetone/magpie/internal/netproxy"
 	"github.com/yetone/magpie/internal/proc"
@@ -822,9 +823,17 @@ func (c claudeCLI) env(env []string, configDir string) []string {
 
 // proxied is env told the proxy a run for ctx goes through (claudeProxy),
 // a SOCKS one bridged: Claude Code is built with Bun, which takes only
-// http:// and https:// proxies (#2651).
+// http:// and https:// proxies (#2651). One in a WSL distro reaches the
+// bridge only when the distro shares Windows' loopback.
+// A run the user's region hold keeps back (egress.Hold) gets its error,
+// and no Claude Code starts: a warm-up, a usage read or a turn alike.
 func (c claudeCLI) proxied(ctx context.Context, env []string) ([]string, error) {
-	return netproxy.EnvForBunWith(claudeProxy(ctx), env, true)
+	choice := claudeProxy(ctx)
+	if err := egress.Hold(ctx, choice); err != nil {
+		return nil, err
+	}
+	// No WSL in this fork (wslrun deleted): the loopback is always local.
+	return netproxy.EnvForBunWith(choice, env, true)
 }
 
 // file is where this Claude Code reads a file of magpie's at path.
