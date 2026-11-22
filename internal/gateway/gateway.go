@@ -576,6 +576,10 @@ type Server struct {
 	// unfit remembers the endpoints each provider's models were turned away
 	// from, so every later turn goes straight to one that takes them.
 	unfit map[string]bool
+	// voidRooms is the reply limit each provider's model is asked for
+	// when a request names none, once its API's own default cut a reply
+	// that said nothing (voidRoom)
+	voidRooms map[string]int
 	// refusedThinking is the thinking blocks each provider and account
 	// refused as signed for another conversation (thinking_bound.go)
 	refusedThinking map[string]bool
@@ -695,6 +699,7 @@ func New() *Server {
 		// nowhere else (provider.KeepsCredentials)
 		client:        &http.Client{Transport: rpmTransport{upstreamTransport()}, CheckRedirect: provider.KeepsCredentials},
 		unfit:         make(map[string]bool),
+		voidRooms:     make(map[string]int),
 		subscription:  newSubscriptionBridge(),
 		sessionsSaved: make(chan struct{}),
 		debug:         os.Getenv("MAGPIE_DEBUG") != "",
@@ -2761,6 +2766,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request, from provider.Pro
 	// which what is done with it goes by
 	who, agent := callerOf(r), agentOf(r)
 	metadata := requestSessionMetadata(r.Header, body)
+	r = r.WithContext(withCodexPluginSubagent(r.Context(), codexPluginSubagent(cmp.Or(who.agent, agent), r.Header, body)))
 	var clientResponseID string // only a reply released to the client owns this ID
 	call := Call{Time: start, From: from, Model: unprefixed(modelOf(body)), Agent: who.agent, Via: who.via, Kind: requestCallKind(r.Header, metadata),
 		wire: archiving(r, capture, start, nil), headers: headerLogOf(r.Context())}
@@ -3444,7 +3450,8 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request, from provider.Pro
 			}
 		}
 		// /responses/compact goes only where it is the provider's own
-		// route (responses_compact.go, #7281)
+		// route, or to a ChatGPT or Copilot account as Codex's trigger
+		// (responses_compact.go, #7281, #7285)
 		if unaryCompact(r) {
 			var left bool
 			if cands, pl, left = s.unaryCompactCarriers(cands, pl); !left {
@@ -3794,6 +3801,9 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request, from provider.Pro
 	// the account and model asked again for a reply that fits the window
 	// the prompt leaves, and how long that is (roomCap)
 	roomFor, roomCap := "", 0
+	// the account and model asked again for the room its model has after
+	// its API's default cut a reply void (noteVoid), once a request
+	voidFor := ""
 	// the key or subscription account the last try went to (#557)
 	providerKeyID, providerKeyName, providerAccount := "", "", ""
 	var other *Try                          // the first failure that wasn't an allowance run out
@@ -4309,6 +4319,11 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request, from provider.Pro
 		// short (DeepSeek's 8K), asks for the model's own, relayed or
 		// translated (withOwnOutput)
 		attemptBody = withOwnOutput(c.p, c.model, from, attemptBody)
+		// a request naming no reply limit, to a model whose API's own
+		// default cut a reply having said nothing (noteVoid), asks for
+		// the room the model has
+		roomless := !namesOutput(from, attemptBody)
+		attemptBody, voidRoomed := s.withVoidRoom(c.p, c.model, from, attemptBody)
 		attemptBody = withThinkingRoom(c.p, c.model, from, attemptBody)
 		if roomFor == c.who()+"|"+c.model {
 			if b, ok := withReplyCap(from, attemptBody, roomCap); ok {
@@ -5055,6 +5070,27 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request, from provider.Pro
 				i--
 				continue
 			}
+		}
+		if voidRoomed && !hw.passing && outputFieldRefused(hw.code(), hw.errBody()) {
+			// the room asked for after a void (noteVoid) turned away as
+			// more than the model takes: asked again naming none, as the
+			// client did, and so from then on
+			s.forgetVoidRoom(c.p.ID, c.model)
+			try.Fail = failRoom
+			s.trace.update(tr, func(t *Route) { t.Tries[len(t.Tries)-1] = try })
+			i--
+			continue
+		}
+		if voidFor != c.who()+"|"+c.model && roomless && !voidRoomed && !hw.passing && hw.failed() && bodyHas(hw.errBody(), cutVoidWords) && s.voidRoomOf(c.p.ID, c.model) > 0 {
+			// the request named no reply limit and the API's own default
+			// cut the reply having said nothing (noteVoid): the same one
+			// is asked again, at once, for the room its model has —
+			// another ask, not the same budget burnt twice (#2972)
+			voidFor = c.who() + "|" + c.model
+			try.Fail = failRoom
+			s.trace.update(tr, func(t *Route) { t.Tries[len(t.Tries)-1] = try })
+			i--
+			continue
 		}
 		if roomFor != c.who()+"|"+c.model && !hw.passing && (hw.code() == 400 || hw.code() == 422) {
 			// the window holds the prompt but not the reply asked for with
@@ -6240,8 +6276,9 @@ func (s *Server) attempt(w http.ResponseWriter, r *http.Request, from provider.P
 	// compaction is on, goes as it came: a translation would leave it out
 	// (#1099)
 	keep := s.keepsCompaction(from, p, model, body)
-	// /responses/compact goes as it came, and only to a provider that
-	// has the route (responses_compact.go)
+	// /responses/compact goes as it came to a provider that has the
+	// route, or as Codex's trigger to an account that carries it
+	// (responses_compact.go)
 	compact := from == provider.Responses && unaryCompact(r)
 	if compact {
 		keep, relayable = true, s.compactsUnary(p, model)
@@ -6794,14 +6831,7 @@ func (s *Server) forwardOnce(ctx context.Context, p provider.Provider, to provid
 		req.Header.Set(provider.ConversationHeader, conversationID(in, body))
 		// the session and subagent the agent named, for a plugin that
 		// keeps state per conversation (plugins#620)
-		req.Header.Del(provider.SessionToPluginHeader)
-		req.Header.Del(provider.SubagentToPluginHeader)
-		if v := sessionOf(in); v != "" {
-			req.Header.Set(provider.SessionToPluginHeader, v)
-		}
-		if v := subOf(in); v != "" {
-			req.Header.Set(provider.SubagentToPluginHeader, v)
-		}
+		tellPluginSession(ctx, req.Header, in, body)
 		tellWorkPlace(req.Header, to, body)
 		// the agent it came from, here or through another magpie
 		tellCaller(ctx, req.Header)
@@ -7064,8 +7094,16 @@ func (s *Server) passthrough(w http.ResponseWriter, r *http.Request, p provider.
 	// a client that asked for one body, of an account that only streams:
 	// asked streamed, the stream read here (gathered)
 	var gather *gathered
-	if gathers(p, proto, body) {
+	// a /responses/compact to an account is asked on /responses with
+	// Codex's compaction_trigger, streamed, and gathered into the
+	// response.compaction (responses_compact.go, #7285)
+	byTrigger := proto == provider.Responses && unaryCompact(r) && compactsByTrigger(p)
+	if gathers(p, proto, body) || byTrigger {
 		gather = &gathered{h: http.Header{}, status: http.StatusOK, capped: int(gjson.GetBytes(body, "max_output_tokens").Int())}
+		if byTrigger {
+			gather.compact, gather.kept = true, compactKept(body)
+			body = withCompactionTrigger(body)
+		}
 		body = withFields(body, map[string]any{"stream": true})
 	}
 	searchFn := false            // Codex's tool search sent as a function
@@ -7303,7 +7341,7 @@ func (s *Server) passthrough(w http.ResponseWriter, r *http.Request, p provider.
 		body = withBodyEffort(proto, body, effort)
 	}
 	path := upstreamPath(p, proto, upstream)
-	if proto == provider.Responses && unaryCompact(r) {
+	if proto == provider.Responses && unaryCompact(r) && !byTrigger {
 		path += "/compact" // responses_compact.go
 	}
 	if proto == provider.Gemini && p.IsVertex() && geminiWhole {
@@ -7434,6 +7472,9 @@ func (s *Server) passthrough(w http.ResponseWriter, r *http.Request, p provider.
 			next = prevElsewhere(r, p, asSent, true)
 		case delta && prevRefused(res.StatusCode, b):
 			next = sentWhole
+			if remote == nil && prevRelay(p) {
+				prevDeltaIgnored(p, "turned away a turn")
+			}
 		}
 		if !bytes.Equal(next, body) {
 			body = next
@@ -7443,6 +7484,18 @@ func (s *Server) passthrough(w http.ResponseWriter, r *http.Request, p provider.
 			if res, err = s.forward(r.Context(), p, proto, path, p.Prepare(body), r.Header); err != nil {
 				return writeError(w, proto, 502, p.Name+": "+err.Error()), err.Error(), true
 			}
+		}
+	}
+	if a := prevAskOf(r.Context()); delta && remote == nil && res.StatusCode == http.StatusOK && a != nil && a.upstreamID != "" &&
+		prevRelay(p) && gjson.GetBytes(body, "previous_response_id").String() == a.upstreamID && !prevEchoed(res, a.upstreamID) {
+		// a relay that answered the new input alone without saying it
+		// followed the response named: dropped, the conversation lost,
+		// so it is asked again whole (prevRelay)
+		res.Body.Close()
+		prevDeltaIgnored(p, "answered a turn without naming the response it followed")
+		body = sentWhole
+		if res, err = s.forward(r.Context(), p, proto, path, p.Prepare(body), r.Header); err != nil {
+			return writeError(w, proto, 502, p.Name+": "+err.Error()), err.Error(), true
 		}
 	}
 	if proto == provider.Responses {
@@ -8438,6 +8491,9 @@ func (s *Server) passthrough(w http.ResponseWriter, r *http.Request, p provider.
 			// it: the held end is dropped, the error said in its place,
 			// [DONE] after — no reply that ended as it should with nothing
 			// in it, and no ask again for the budget to burn twice (#2972)
+			if capped <= 0 {
+				s.noteVoid(p, model, sniff.u.Output)
+			}
 			msg := cutVoidFailed(p.Name, capped)
 			dropHalf()
 			w.Write(append(apart(), streamFailure(provider.Chat, msg)...))
@@ -8469,6 +8525,9 @@ func (s *Server) passthrough(w http.ResponseWriter, r *http.Request, p provider.
 		}
 		if cutVoid(upstreamStop(heldBody), !sniff.tail.said(), spent, capped) &&
 			replyCheck(r.Context()) == nil {
+			if capped <= 0 {
+				s.noteVoid(p, model, spent)
+			}
 			msg := cutVoidFailed(p.Name, capped)
 			return writeError(w, proto, 502, msg), msg, true
 		}
@@ -9890,11 +9949,6 @@ func (s *Server) translate(w http.ResponseWriter, r *http.Request, p provider.Pr
 		// told, not left out for the model to answer the words alone (#6135)
 		return writeError(w, from, 400, msg), msg
 	}
-	if s.refusesDeferred(p, from, to, model, request) {
-		// Claude Code asks again with every tool declared, so a tool it
-		// loads doesn't change the prompt's start (deferred_route.go)
-		return writeError(w, from, 400, deferredRefusal), deferredRefusal
-	}
 	stream := request.Stream
 	request.Stream = true
 	if stream {
@@ -10043,7 +10097,12 @@ func (s *Server) translate(w http.ResponseWriter, r *http.Request, p provider.Pr
 		cutVoid(col.res.Stop, !saidAnything(col.res.Parts), col.res.Usage.Output, request.MaxTokens) {
 		// at once, asked again nowhere: a void's budget is spent, and a
 		// second ask at the same max_tokens would mostly spend it twice
-		// over before the error (#2972, its review)
+		// over before the error (#2972, its review). One that named no
+		// limit was cut by the API's own default: the model is asked for
+		// more from now on (noteVoid), this request again by the routing
+		if request.MaxTokens <= 0 {
+			s.noteVoid(p, model, col.res.Usage.Output)
+		}
 		msg := cutVoidFailed(p.Name, request.MaxTokens)
 		return writeError(w, from, 502, msg), msg
 	}
