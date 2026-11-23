@@ -6,12 +6,18 @@ provider with no second container and no separate tunnel.
 
 ## What is in this folder
 
-- `codearts-gateway` — the vendored gateway binary, v3.1.1, musl static
+- `codearts-gateway` — the vendored gateway binary, v3.1.2, musl static
   (`target/x86_64-unknown-linux-musl/release/codearts-gateway` from the
-  `codearts-gateway-v3` source tree), 12,719,600 bytes,
-  SHA256 `94e443dbaa9499d45fc6d951dc3c588495248bbd2455c5b30e9dda0563500a4d`.
+  `codearts-gateway-v3` source tree), 12,744,448 bytes,
+  SHA256 `ed1f57a930926b6863af247c3162d2f87bf6c26e949f7f6eaf6cf3616b35c6cf`.
   Rebuild it from that source tree and replace this file to upgrade it;
-  update the version and hash here when you do.
+  update the version and hash here when you do. v3.1.2 adds per-stage chat
+  timings: each chat request records `session_ms` (MaaS session setup, 0
+  when the cached session is reused) and `upstream_ms` (the upstream chat
+  call itself; time to first byte for streaming) in `logs.db`
+  (`request_logs`, alongside total `latency_ms`) and a `chat timings ...`
+  line in `gateway.log`. A `logs.db` from an older version gains the two
+  columns on startup.
 - `docker-entrypoint.sh` — the container entrypoint (see below).
 - `README.md` — this file.
 
@@ -53,7 +59,10 @@ secret is in this repo):
 - `CODEARTS_GATEWAY` — optional, upstream base URL override
 
 Then redeploy (blitz redeploys on push to the branch it tracks). The
-`codearts` provider should appear with 9 models.
+`codearts` provider should appear with the live upstream model list (19
+models on blitz as of 2026-11-23, including Kimi K3 / K3.1 Pro, DeepSeek
+V4, GLM-5.3; the 9-model list — 5 route aliases + 4 fallbacks — is only
+what the gateway shows when it cannot reach the upstream to probe).
 
 ## Known limitation
 
@@ -62,5 +71,6 @@ The gateway's upstream is Huawei CodeArts MaaS
 the gateway's local fallback, so it answers even when the upstream is
 unreachable — but a real chat then fails with an upstream-network error.
 That was the case from the Huawei ECS host since 2026-11-19 (last
-successful chat 2026-11-17); whether blitz's egress reaches the upstream
-has to be checked after the redeploy, with a real chat.
+successful chat 2026-11-17). Blitz's egress was verified working on
+2026-11-23 (codearts/auto answered a real chat); the ECS host's fault is
+unfixed, so the same image deployed there still cannot serve real chats.
