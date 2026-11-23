@@ -57,6 +57,13 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 COPY --from=build /out/magpie /magpie
 # magpie on PATH, so `magpie accounts add …` works in that terminal
 RUN ln -s /magpie /usr/local/bin/magpie
+# The CodeArts gateway (v3.1.1, vendored musl static binary) and the
+# entrypoint that starts it beside Magpie in this one container; see
+# codearts-gateway/README.md. The gateway's AK/SK come from env vars at
+# runtime, never from the image.
+COPY codearts-gateway/codearts-gateway /usr/local/bin/codearts-gateway
+COPY codearts-gateway/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod 755 /usr/local/bin/codearts-gateway /usr/local/bin/docker-entrypoint.sh
 USER nonroot
 COPY --from=build --chown=65532:65532 /config /config
 
@@ -82,5 +89,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 EXPOSE 3425 3430
 
-ENTRYPOINT ["/magpie"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["serve"]
